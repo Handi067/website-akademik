@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>rekap-absen/title> <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <h1>Rekapitulasi Kehadiran</h1>
+    <h2>Mata Kuliah: **<%= nama_mk %>** (<%= kode_mk %>)</h2>
+    <h3>Total Pertemuan yang Diadakan: **<%= totalPertemuan %> kali**</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>NIM</th>
+                <th>Nama Mahasiswa</th>
+                <th>Total Hadir</th>
+                <th>Persentase Kehadiran</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% rekapData.forEach(function(data) { %>
+                <tr>
+                    <td><%= data.nim %></td>
+                    <td><%= data.nama_mhs %></td>
+                    <td><%= data.total_hadir %> kali</td>
+                    <td>
+                        <% 
+                            let persentase = 0;
+                            // Pastikan total pertemuan > 0 untuk menghindari pembagian dengan nol
+                            if (totalPertemuan > 0) {
+                                // Hitung Persentase: (Total Hadir / Total Pertemuan) * 100
+                                persentase = (data.total_hadir / totalPertemuan) * 100;
+                            }
+                        %>
+                        **<%= persentase.toFixed(2) %>%**
+                    </td>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+    
+    <p style="margin-top: 30px;"><a href="/mk-postgres">Kembali ke Daftar Mata Kuliah</a></p>
+</body>
+</html>

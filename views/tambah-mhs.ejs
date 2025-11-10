@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Tambah Mahasiswa Baru</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="main-content">
+        <div class="container" style="grid-template-columns: 1fr;">
+            <h1>Tambah Mahasiswa</h1>
+
+            <div class="setting-layout">
+                <div class="setting-sidebar">
+                    <h3>DATA UTAMA</h3>
+                    <a href="/mk-postgres">Mata Kuliah</a>
+                    <a href="/mahasiswa-crud" class="active">Data Mahasiswa</a>
+                    
+                    <h3 style="margin-top: 20px;">AKSI CEPAT</h3>
+                    <a href="/tambah-mhs" style="color: #28a745;" class="active">Tambah Mahasiswa</a>
+                    <a href="/" class="home-link" style="color: #6c757d;">Kembali ke Dashboard</a>
+                </div>
+
+                <div class="setting-content">
+                    <h2>Formulir Data Mahasiswa Baru</h2>
+                    
+                    <form action="/tambah-mhs" method="POST">
+                        
+                        <label for="nim">NIM:</label><br>
+                        <input type="text" id="nim" name="nim" required maxlength="15" placeholder="Nomor Induk Mahasiswa"><br>
+                        
+                        <label for="nama_mhs">Nama Mahasiswa:</label><br>
+                        <input type="text" id="nama_mhs" name="nama_mhs" required maxlength="100" placeholder="Nama Lengkap"><br>
+                        
+                        <label for="jurusan">Jurusan:</label><br>
+                        <input type="text" id="jurusan" name="jurusan" required maxlength="50" placeholder="Contoh: Teknik Informatika"><br>
+                        
+                        <div style="text-align: right; margin-top: 20px;">
+                            <a href="/mahasiswa-crud" style="margin-right: 15px; color: #6c757d;">Batal</a>
+                            <button type="submit" class="form-submit-btn">Simpan Data</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

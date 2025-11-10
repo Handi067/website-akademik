@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>tambah-mk</title> <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <h1>Tambah Mata Kuliah Baru</h1>
+    
+    <form action="/tambah-mk" method="POST">
+        
+        <label for="kode_mk">Kode Mata Kuliah:</label><br>
+        <input type="text" id="kode_mk" name="kode_mk" required maxlength="10" placeholder="Contoh: SI101"><br>
+        
+        <label for="nama_mk">Nama Mata Kuliah:</label><br>
+        <input type="text" id="nama_mk" name="nama_mk" required maxlength="100" placeholder="Contoh: Basis Data"><br>
+        
+        <label for="sks">SKS:</label><br>
+        <input type="number" id="sks" name="sks" required min="1" placeholder="Contoh: 3"><br>
+        
+        <button type="submit">Simpan Mata Kuliah</button>
+    </form>
+    
+    <p style="margin-top: 20px;"><a href="/mk-postgres">Batal dan Kembali ke Daftar Mata Kuliah</a></p>
+</body>
+</html>

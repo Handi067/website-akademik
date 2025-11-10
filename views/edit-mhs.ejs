@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Mahasiswa</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Edit Mahasiswa: **<%= mhs.nama_mhs %>**</h1>
+        
+        <form action="/edit-mhs/<%= mhs.nim %>" method="POST">
+            
+            <label for="nim">NIM:</label><br>
+            <input type="text" id="nim" name="nim" value="<%= mhs.nim %>" disabled><br><br>
+            
+            <label for="nama_mhs">Nama Mahasiswa:</label><br>
+            <input type="text" id="nama_mhs" name="nama_mhs" value="<%= mhs.nama_mhs %>" required maxlength="100"><br><br>
+            
+            <label for="jurusan">Jurusan:</label><br>
+            <input type="text" id="jurusan" name="jurusan" value="<%= mhs.jurusan %>" required maxlength="50"><br><br>
+            
+            <button type="submit" class="form-submit-btn">Simpan Perubahan</button>
+        </form>
+        
+        <p style="margin-top: 20px;"><a href="/mahasiswa-crud">Batal dan Kembali ke Daftar Mahasiswa</a></p>
+    </div>
+</body>
+</html>

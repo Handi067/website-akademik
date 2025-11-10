@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Absensi <%= nama_mk %> - Pert. <%= pertemuan.id_pertemuan %></title>
+    <link rel="stylesheet" href="/css/style.css"> 
+</head>
+<body>
+    <div class="container">
+        <h1>Formulir Absensi</h1>
+        <h2>Mata Kuliah: **<%= nama_mk %>** (<%= pertemuan.kode_mk %>)</h2>
+        <h3>Pertemuan Tanggal: **<%= pertemuan.tanggal.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) %>**</h3>
+        <p>Topik Pembahasan: *<%= pertemuan.topik %>*</p>
+
+        <form action="/absen/<%= pertemuan.kode_mk %>/<%= pertemuan.id_pertemuan %>" method="POST">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">NIM</th>
+                        <th style="width: 50%;">Nama Mahasiswa</th>
+                        <th style="width: 30%;">Status Kehadiran</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% mahasiswa.forEach(function(mhs) { %>
+                        <tr>
+                            <td><%= mhs.nim %></td>
+                            <td style="text-align: left;"><%= mhs.nama_mhs %></td>
+                            <td class="absensi-status">
+                                <input type="radio" 
+                                       id="hadir_<%= mhs.nim %>" 
+                                       name="<%= mhs.nim %>" 
+                                       value="hadir" 
+                                       <%= existingAbsen[mhs.nim] === true ? 'checked' : '' %> required>
+                                <label for="hadir_<%= mhs.nim %>">Hadir</label>
+
+                                <input type="radio" 
+                                       id="tidak_hadir_<%= mhs.nim %>" 
+                                       name="<%= mhs.nim %>" 
+                                       value="tidak_hadir" 
+                                       <%= existingAbsen[mhs.nim] === false ? 'checked' : '' %> required>
+                                <label for="tidak_hadir_<%= mhs.nim %>">Tidak Hadir</label>
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            
+            <button type="submit" class="form-submit-btn">Simpan/Update Absensi</button>
+        </form>
+        
+        <p style="margin-top: 30px;"><a href="/mk-postgres">Kembali ke Daftar Mata Kuliah</a></p>
+    </div>
+</body>
+</html>

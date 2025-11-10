@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css"> 
+</head>
+<body>
+    <div class="container">
+        <h1><i style="font-style: normal;">🏠</i> <%= title %></h1>
+        <hr>
+
+        <div class="header-actions">
+            <a href="/mk-postgres" class="tambah-link">Lihat Daftar Mata Kuliah (CRUD)</a>
+            <a href="/mahasiswa-crud" class="tambah-link" style="background-color: #ffc107; color: #333;">Kelola Mahasiswa</a>
+        </div>
+
+        <div class="announcement">
+            <h3>Pengumuman Sistem:</h3>
+            <% if (pengumuman && pengumuman.length > 0) { %>
+                <ul>
+                    <% pengumuman.forEach(function(item) { %>
+                        <li><%= item %></li>
+                    <% }); %>
+                </ul>
+            <% } else { %>
+                <p>Tidak ada pengumuman baru saat ini.</p>
+            <% } %>
+        </div>
+
+        <p style="margin-top: 30px; font-style: italic;">
+            Aplikasi ini dibangun menggunakan Node.js, Express, EJS, dan PostgreSQL.
+        </p>
+    </div>
+</body>
+</html>

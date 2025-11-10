@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Kelola Pertemuan</h1>
+        <h2>Mata Kuliah: **<%= nama_mk %>** (<%= kode_mk %>)</h2>
+        
+        <div class="header-actions" style="display: block;">
+            <a href="/mk-postgres" class="home-link">Kembali ke Daftar Mata Kuliah</a>
+        </div>
+        
+        <hr style="margin: 20px 0;">
+        
+        <h3>Tambahkan Pertemuan Baru</h3>
+        <form action="/tambah-pertemuan/<%= kode_mk %>" method="POST">
+            <label for="tanggal">Tanggal Pertemuan:</label>
+            <input type="date" id="tanggal" name="tanggal" required><br>
+            
+            <label for="topik">Topik/Materi:</label>
+            <input type="text" id="topik" name="topik" required maxlength="255" placeholder="Contoh: Pengantar Node.js dan Express"><br>
+            
+            <button type="submit" class="form-submit-btn">Buat Pertemuan</button>
+        </form>
+
+        <h3 style="margin-top: 40px;">Daftar Pertemuan yang Sudah Ada</h3>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Pertemuan</th>
+                    <th>Tanggal</th>
+                    <th>Topik</th>
+                    <th>Aksi Absensi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (listPertemuan.length === 0) { %>
+                    <tr>
+                        <td colspan="4" style="text-align: center;">Belum ada pertemuan yang dibuat untuk mata kuliah ini.</td>
+                    </tr>
+                <% } else { %>
+                    <% listPertemuan.forEach(function(pertemuan) { %>
+                        <tr>
+                            <td><%= pertemuan.id_pertemuan %></td>
+                            <td><%= pertemuan.tanggal.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) %></td>
+                            <td style="text-align: left;"><%= pertemuan.topik %></td>
+                            <td class="actions">
+                                <a href="/absen/<%= kode_mk %>/<%= pertemuan.id_pertemuan %>" class="absen-btn">Isi/Edit Absensi</a>
+                            </td>
+                        </tr>
+                    <% }); %>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

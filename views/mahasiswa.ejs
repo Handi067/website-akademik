@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>Manajemen Mahasiswa</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <div class="main-content">
+        <div class="container" style="grid-template-columns: 1fr;">
+            <h1><i style="font-style: normal;">🧑‍🎓</i> Manajemen Mahasiswa</h1>
+
+            <div class="setting-layout">
+                <div class="setting-sidebar">
+                    <h3>DATA UTAMA</h3>
+                    <a href="/mk-postgres">Mata Kuliah</a>
+                    <a href="/mahasiswa-crud" class="active">Data Mahasiswa</a>
+                    
+                    <h3 style="margin-top: 20px;">AKSI CEPAT</h3>
+                    <a href="/tambah-mhs" style="color: #28a745;">Tambah Mahasiswa</a>
+                    <a href="/" class="home-link" style="color: #6c757d;">Kembali ke Dashboard</a>
+                </div>
+
+                <div class="setting-content">
+                    <h2>Daftar Mahasiswa Aktif</h2>
+                    <p style="color: #6c757d; margin-bottom: 20px;">Kelola, edit, dan hapus data mahasiswa. Total: <%= listMhs.length %> mahasiswa.</p>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>NIM</th>
+                                <th>Nama Mahasiswa</th>
+                                <th>Jurusan</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% listMhs.forEach(function(mhs) { %>
+                                <tr>
+                                    <td><%= mhs.nim %></td>
+                                    <td><%= mhs.nama_mhs %></td>
+                                    <td><%= mhs.jurusan %></td>
+                                    
+                                    <td class="actions">
+                                        <a href="/edit-mhs/<%= mhs.nim %>" class="edit-btn">Edit</a>
+                                        
+                                        <form action="/hapus-mhs/<%= mhs.nim %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus <%= mhs.nama_mhs %>? Data absensi terkait akan ikut terpengaruh.');">
+                                            <input type="hidden" name="_method" value="DELETE">
+                                            <button type="submit" class="delete-btn">Hapus</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

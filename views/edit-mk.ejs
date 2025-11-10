@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title>edit-mk</title> <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+    <h1>Edit Mata Kuliah: **<%= mk.nama_mk %>**</h1>
+    
+    <form action="/edit-mk/<%= mk.kode_mk %>" method="POST">
+        
+        <label for="kode_mk">Kode Mata Kuliah:</label><br>
+        <input type="text" id="kode_mk" name="kode_mk" value="<%= mk.kode_mk %>" disabled><br><br>
+        
+        <label for="nama_mk">Nama Mata Kuliah:</label><br>
+        <input type="text" id="nama_mk" name="nama_mk" value="<%= mk.nama_mk %>" required maxlength="100"><br><br>
+        
+        <label for="sks">SKS:</label><br>
+        <input type="number" id="sks" name="sks" value="<%= mk.sks %>" required min="1"><br><br>
+        
+        <button type="submit">Simpan Perubahan</button>
+    </form>
+    
+    <p style="margin-top: 20px;"><a href="/mk-postgres">Batal dan Kembali ke Daftar Mata Kuliah</a></p>
+</body>
+</html>
