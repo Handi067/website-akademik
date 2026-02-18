@@ -4,10 +4,43 @@
     <meta charset="UTF-8">
     <title>Manajemen Mahasiswa</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+    </style>
 </head>
 <body>
     <div class="main-content">
-        <div class="container" style="grid-template-columns: 1fr;">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="active">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+            </div>
+
             <h1><i style="font-style: normal;">🧑‍🎓</i> Manajemen Mahasiswa</h1>
 
             <div class="setting-layout">
@@ -18,41 +51,43 @@
                     
                     <h3 style="margin-top: 20px;">AKSI CEPAT</h3>
                     <a href="/tambah-mhs" style="color: #28a745;">Tambah Mahasiswa</a>
-                    <a href="/" class="home-link" style="color: #6c757d;">Kembali ke Dashboard</a>
+                    <a href="/" style="color: #6c757d;">Kembali ke Dashboard</a>
                 </div>
 
                 <div class="setting-content">
                     <h2>Daftar Mahasiswa Aktif</h2>
                     <p style="color: #6c757d; margin-bottom: 20px;">Kelola, edit, dan hapus data mahasiswa. Total: <%= listMhs.length %> mahasiswa.</p>
-                    
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>NIM</th>
-                                <th>Nama Mahasiswa</th>
-                                <th>Jurusan</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% listMhs.forEach(function(mhs) { %>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
                                 <tr>
-                                    <td><%= mhs.nim %></td>
-                                    <td><%= mhs.nama_mhs %></td>
-                                    <td><%= mhs.jurusan %></td>
-                                    
-                                    <td class="actions">
-                                        <a href="/edit-mhs/<%= mhs.nim %>" class="edit-btn">Edit</a>
-                                        
-                                        <form action="/hapus-mhs/<%= mhs.nim %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus <%= mhs.nama_mhs %>? Data absensi terkait akan ikut terpengaruh.');">
-                                            <input type="hidden" name="_method" value="DELETE">
-                                            <button type="submit" class="delete-btn">Hapus</button>
-                                        </form>
-                                    </td>
+                                    <th>NIM</th>
+                                    <th>Nama Mahasiswa</th>
+                                    <th>Jurusan</th>
+                                    <th>Aksi</th>
                                 </tr>
-                            <% }); %>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                <% listMhs.forEach(function(mhs) { %>
+                                    <tr>
+                                        <td><%= mhs.nim %></td>
+                                        <td style="text-align: left;"><%= mhs.nama_mhs %></td>
+                                        <td><%= mhs.jurusan %></td>
+                                        
+                                        <td class="actions">
+                                            <a href="/edit-mhs/<%= mhs.nim %>" class="edit-btn">Edit</a>
+                                            
+                                            <form action="/hapus-mhs/<%= mhs.nim %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus <%= mhs.nama_mhs %>? Data absensi terkait akan ikut terpengaruh.');">
+                                                <input type="hidden" name="_method" value="DELETE">
+                                                <button type="submit" class="delete-btn">Hapus</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <% }); %>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

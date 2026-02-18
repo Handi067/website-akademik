@@ -4,52 +4,89 @@
     <meta charset="UTF-8">
     <title><%= title %></title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1><i style="font-style: normal;">📚</i> <%= title %></h1>
-        
-        <div class="header-actions">
-            <a href="/" class="home-link">Home</a>
-            <a href="/mahasiswa-crud" class="tambah-link" style="background-color: #ffc107; color: #333;">Kelola Mahasiswa</a> 
-            <a href="/tambah-mk" class="tambah-link">Tambah Mata Kuliah Baru</a>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="active">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📚</i> <%= title %></h1>
+            
+            <div class="header-actions">
+                <a href="/" class="home-link">Home</a>
+                <a href="/mahasiswa-crud" class="warning-link">Kelola Mahasiswa</a> 
+                <a href="/tambah-mk" class="tambah-link">Tambah Mata Kuliah Baru</a>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Kode MK</th>
+                            <th>Nama Mata Kuliah</th>
+                            <th>SKS</th>
+                            <th>CRUD Data</th>
+                            <th>Absensi & Rekap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% listMk.forEach(function(mk) { %>
+                            <tr>
+                                <td><%= mk.kode_mk %></td>
+                                <td style="text-align: left;"><%= mk.nama_mk %></td>
+                                <td><%= mk.sks %></td>
+                                
+                                <td class="actions">
+                                    <a href="/edit-mk/<%= mk.kode_mk %>" class="edit-btn">Edit</a>
+                                    
+                                    <form action="/hapus-mk/<%= mk.kode_mk %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus <%= mk.nama_mk %>? Tindakan ini akan menghapus data absensi terkait.');">
+                                        <input type="hidden" name="_method" value="DELETE">
+                                        <button type="submit" class="delete-btn">Hapus</button>
+                                    </form>
+                                </td>
+
+                                <td class="actions">
+                                    <a href="/kelola-pertemuan/<%= mk.kode_mk %>" class="absen-btn">Kelola Pertemuan</a>
+                                    
+                                    <a href="/rekap-absen/<%= mk.kode_mk %>" class="rekap-btn">Lihat Rekap</a>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
         </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Kode MK</th>
-                    <th>Nama Mata Kuliah</th>
-                    <th>SKS</th>
-                    <th>CRUD Data</th>
-                    <th>Absensi & Rekap</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% listMk.forEach(function(mk) { %>
-                    <tr>
-                        <td><%= mk.kode_mk %></td>
-                        <td><%= mk.nama_mk %></td>
-                        <td><%= mk.sks %></td>
-                        
-                        <td class="actions">
-                            <a href="/edit-mk/<%= mk.kode_mk %>" class="edit-btn">Edit</a>
-                            
-                            <form action="/hapus-mk/<%= mk.kode_mk %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus <%= mk.nama_mk %>? Tindakan ini akan menghapus data absensi terkait.');">
-                                <input type="hidden" name="_method" value="DELETE">
-                                <button type="submit" class="delete-btn">Hapus</button>
-                            </form>
-                        </td>
-
-                        <td class="actions">
-                            <a href="/kelola-pertemuan/<%= mk.kode_mk %>" class="absen-btn">Kelola Pertemuan</a>
-                            
-                            <a href="/rekap-absen/<%= mk.kode_mk %>" class="rekap-btn">Lihat Rekap</a>
-                        </td>
-                    </tr>
-                <% }); %>
-            </tbody>
-        </table>
     </div>
 </body>
 </html>

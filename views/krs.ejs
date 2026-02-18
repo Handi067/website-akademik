@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .krs-container {
+            display: flex;
+            gap: 20px;
+        }
+        .available-courses, .current-krs {
+            flex: 1;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .course-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: box-shadow 0.2s;
+        }
+        .course-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .course-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .course-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        .course-code {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .course-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .course-info div {
+            display: flex;
+            align-items: center;
+        }
+        .course-info strong {
+            margin-right: 5px;
+            color: #333;
+        }
+        .btn-add, .btn-remove {
+            background: #28a745;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        .btn-add:hover {
+            background: #1e7e34;
+        }
+        .btn-remove {
+            background: #dc3545;
+        }
+        .btn-remove:hover {
+            background: #c82333;
+        }
+        .krs-summary {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .krs-summary h3 {
+            margin: 0 0 10px 0;
+            color: #007bff;
+        }
+        .total-sks {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .semester-selector {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .semester-selector form {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .semester-selector select, .semester-selector button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .semester-selector button {
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+        .semester-selector button:hover {
+            background: #0056b3;
+        }
+        .alert {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+                <a href="/krs" class="active">KRS</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📚</i> Kartu Rencana Studi</h1>
+
+            <div class="semester-selector">
+                <form method="GET" action="/krs">
+                    <label for="semester">Semester:</label>
+                    <select name="semester" id="semester">
+                        <option value="Ganjil" <%= currentSemester === 'Ganjil' ? 'selected' : '' %>>Ganjil</option>
+                        <option value="Genap" <%= currentSemester === 'Genap' ? 'selected' : '' %>>Genap</option>
+                    </select>
+                    <label for="tahun_ajaran">Tahun Ajaran:</label>
+                    <select name="tahun_ajaran" id="tahun_ajaran">
+                        <option value="2024/2025" <%= currentTahun === '2024/2025' ? 'selected' : '' %>>2024/2025</option>
+                        <option value="2025/2026" <%= currentTahun === '2025/2026' ? 'selected' : '' %>>2025/2026</option>
+                    </select>
+                    <button type="submit">Tampilkan</button>
+                </form>
+            </div>
+
+            <div id="message" style="display: none;"></div>
+
+            <div class="krs-container">
+                <div class="available-courses">
+                    <h2>Mata Kuliah Tersedia</h2>
+                    <% if (jadwalData && jadwalData.length > 0) { %>
+                        <% jadwalData.forEach(function(jadwal) { %>
+                            <% const inKRS = krsData.some(krs => krs.jadwal_id === jadwal.id); %>
+                            <div class="course-card">
+                                <div class="course-header">
+                                    <div>
+                                        <h3 class="course-title"><%= jadwal.nama_mk %></h3>
+                                        <div class="course-code"><%= jadwal.kode_mk %> (<%= jadwal.sks %> SKS)</div>
+                                    </div>
+                                    <% if (!inKRS) { %>
+                                        <button class="btn-add" onclick="addToKRS(<%= jadwal.id %>, '<%= currentSemester %>', '<%= currentTahun %>')">
+                                            Tambah ke KRS
+                                        </button>
+                                    <% } %>
+                                </div>
+                                <div class="course-info">
+                                    <div><strong>Dosen:</strong> <%= jadwal.dosen %></div>
+                                    <div><strong>Kelas:</strong> <%= jadwal.kelas %></div>
+                                    <div><strong>Hari:</strong> <%= jadwal.hari %></div>
+                                    <div><strong>Waktu:</strong> <%= jadwal.jam_mulai %> - <%= jadwal.jam_selesai %></div>
+                                    <div><strong>Ruangan:</strong> <%= jadwal.ruangan %></div>
+                                    <div><strong>Semester:</strong> <%= jadwal.semester %> <%= jadwal.tahun_ajaran %></div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <h3>Tidak ada mata kuliah tersedia</h3>
+                            <p>Belum ada jadwal kuliah untuk semester dan tahun ajaran yang dipilih.</p>
+                        </div>
+                    <% } %>
+                </div>
+
+                <div class="current-krs">
+                    <div class="krs-summary">
+                        <h3>KRS Anda</h3>
+                        <div class="total-sks">
+                            Total SKS: <%= krsData.reduce((total, item) => total + parseInt(item.sks), 0) %>
+                        </div>
+                    </div>
+
+                    <h2>Mata Kuliah di KRS</h2>
+                    <% if (krsData && krsData.length > 0) { %>
+                        <% krsData.forEach(function(krs) { %>
+                            <div class="course-card">
+                                <div class="course-header">
+                                    <div>
+                                        <h3 class="course-title"><%= krs.nama_mk %></h3>
+                                        <div class="course-code"><%= krs.kode_mk %> (<%= krs.sks %> SKS)</div>
+                                    </div>
+                                    <button class="btn-remove" onclick="removeFromKRS(<%= krs.jadwal_id %>, '<%= currentSemester %>', '<%= currentTahun %>')">
+                                        Hapus dari KRS
+                                    </button>
+                                </div>
+                                <div class="course-info">
+                                    <div><strong>Dosen:</strong> <%= krs.dosen %></div>
+                                    <div><strong>Kelas:</strong> <%= krs.kelas %></div>
+                                    <div><strong>Hari:</strong> <%= krs.hari %></div>
+                                    <div><strong>Waktu:</strong> <%= krs.jam_mulai %> - <%= krs.jam_selesai %></div>
+                                    <div><strong>Ruangan:</strong> <%= krs.ruangan %></div>
+                                </div>
+                            </div>
+                        <% }); %>
+                    <% } else { %>
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <h3>KRS Anda masih kosong</h3>
+                            <p>Pilih mata kuliah dari daftar tersedia untuk ditambahkan ke KRS.</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function addToKRS(jadwalId, semester, tahunAjaran) {
+            try {
+                const response = await fetch('/krs/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        jadwal_id: jadwalId,
+                        semester: semester,
+                        tahun_ajaran: tahunAjaran
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Terjadi kesalahan saat menambah mata kuliah ke KRS', 'error');
+            }
+        }
+
+        async function removeFromKRS(jadwalId, semester, tahunAjaran) {
+            if (!confirm('Apakah Anda yakin ingin menghapus mata kuliah ini dari KRS?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/krs/remove', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        jadwal_id: jadwalId,
+                        semester: semester,
+                        tahun_ajaran: tahunAjaran
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showMessage(result.message, 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showMessage(result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Terjadi kesalahan saat menghapus mata kuliah dari KRS', 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `alert alert-${type}`;
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

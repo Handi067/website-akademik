@@ -2,17 +2,24 @@
   "name": "website-node",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "App.js",
   "scripts": {
+    "start": "node App.js",
+    "dev": "nodemon App.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "ejs": "^3.1.10",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "pg": "^8.16.3"
   }
 }

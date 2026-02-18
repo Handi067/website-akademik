@@ -2,44 +2,101 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>rekap-absen/title> <link rel="stylesheet" href="/css/style.css">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <h1>Rekapitulasi Kehadiran</h1>
-    <h2>Mata Kuliah: **<%= nama_mk %>** (<%= kode_mk %>)</h2>
-    <h3>Total Pertemuan yang Diadakan: **<%= totalPertemuan %> kali**</h3>
+    <div class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <div class="title-wrap">
+                    <h1>Rekapitulasi Kehadiran</h1>
+                    <div class="subtle">Ringkasan kehadiran mahasiswa per mata kuliah.</div>
+                </div>
+                <div class="header-actions" style="margin: 0;">
+                    <a href="/mk-postgres" class="home-link">Kembali</a>
+                </div>
+            </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>NIM</th>
-                <th>Nama Mahasiswa</th>
-                <th>Total Hadir</th>
-                <th>Persentase Kehadiran</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% rekapData.forEach(function(data) { %>
-                <tr>
-                    <td><%= data.nim %></td>
-                    <td><%= data.nama_mhs %></td>
-                    <td><%= data.total_hadir %> kali</td>
-                    <td>
-                        <% 
-                            let persentase = 0;
-                            // Pastikan total pertemuan > 0 untuk menghindari pembagian dengan nol
-                            if (totalPertemuan > 0) {
-                                // Hitung Persentase: (Total Hadir / Total Pertemuan) * 100
-                                persentase = (data.total_hadir / totalPertemuan) * 100;
-                            }
-                        %>
-                        **<%= persentase.toFixed(2) %>%**
-                    </td>
-                </tr>
-            <% }); %>
-        </tbody>
-    </table>
-    
-    <p style="margin-top: 30px;"><a href="/mk-postgres">Kembali ke Daftar Mata Kuliah</a></p>
+            <div class="form-card" style="margin-top: 10px;">
+                <h2 style="margin-top: 0;">Mata Kuliah: <strong><%= nama_mk %></strong> (<%= kode_mk %>)</h2>
+
+                <%
+                    const totalMhs = (rekapData && rekapData.length) ? rekapData.length : 0;
+                    const totalHadirSum = (rekapData || []).reduce((acc, row) => acc + (parseInt(row.total_hadir) || 0), 0);
+                    const avgPersen = (totalMhs > 0 && totalPertemuan > 0) ? (totalHadirSum / (totalMhs * totalPertemuan)) * 100 : 0;
+                    const avgBadgeClass = avgPersen >= 80 ? 'good' : (avgPersen >= 60 ? 'warn' : 'bad');
+                %>
+
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <span class="label">Total Pertemuan</span>
+                        <span class="value"><%= totalPertemuan %> kali</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Total Mahasiswa</span>
+                        <span class="value"><%= totalMhs %> orang</span>
+                    </div>
+                    <div class="meta-item" style="grid-column: 1 / -1;">
+                        <span class="label">Rata-rata Kehadiran</span>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            <span class="badge <%= avgBadgeClass %>"><%= avgPersen.toFixed(1) %>%</span>
+                            <div class="progress" style="flex:1; min-width: 220px;">
+                                <div class="bar" data-pct="<%= Math.max(0, Math.min(100, avgPersen)) %>"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>NIM</th>
+                            <th>Nama Mahasiswa</th>
+                            <th>Total Hadir</th>
+                            <th>Persentase Kehadiran</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% rekapData.forEach(function(data) { %>
+                            <tr>
+                                <td><%= data.nim %></td>
+                                <td style="text-align: left;"><%= data.nama_mhs %></td>
+                                <td><%= data.total_hadir %> kali</td>
+                                <td>
+                                    <% 
+                                        let persentase = 0;
+                                        // Pastikan total pertemuan > 0 untuk menghindari pembagian dengan nol
+                                        if (totalPertemuan > 0) {
+                                            // Hitung Persentase: (Total Hadir / Total Pertemuan) * 100
+                                            persentase = (data.total_hadir / totalPertemuan) * 100;
+                                        }
+                                        const badgeClass = persentase >= 80 ? 'good' : (persentase >= 60 ? 'warn' : 'bad');
+                                    %>
+                                    <div style="display:flex; align-items:center; gap:10px; justify-content:center; flex-wrap:wrap;">
+                                        <span class="badge <%= badgeClass %>"><%= persentase.toFixed(1) %>%</span>
+                                        <div class="progress" style="width: 120px;">
+                                            <div class="bar" data-pct="<%= Math.max(0, Math.min(100, persentase)) %>"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.bar[data-pct]').forEach((el) => {
+                const pct = Math.max(0, Math.min(100, Number(el.dataset.pct || 0)));
+                el.style.width = pct + '%';
+            });
+        });
+    </script>
 </body>
 </html>

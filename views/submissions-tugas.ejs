@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .assignment-info {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .submission-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .submission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        .student-info {
+            font-weight: bold;
+            color: #333;
+        }
+        .submission-meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .submission-content {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+        .grading-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .grading-form {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .grading-form input {
+            width: 80px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .grading-form button {
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .grading-form button:hover {
+            background: #1e7e34;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .status-belum-dinilai { background: #ffc107; color: #212529; }
+        .status-sudah-dinilai { background: #28a745; color: white; }
+        .grade-display {
+            background: #d4edda;
+            color: #155724;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .multiple-choice-answers {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .mc-question {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .mc-answer {
+            margin-top: 5px;
+            padding: 5px 10px;
+            background: #e9ecef;
+            border-radius: 4px;
+        }
+        .correct-mark {
+            color: #28a745;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .wrong-mark {
+            color: #dc3545;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .grade-display {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="active">Tugas</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📝</i> Submissions: <%= tugas.judul %></h1>
+
+            <div class="assignment-info">
+                <strong>Mata Kuliah:</strong> <%= tugas.nama_mk %> |
+                <strong>Deadline:</strong> <%= new Date(tugas.deadline).toLocaleDateString('id-ID') %> |
+                <strong>Total Submissions:</strong> <%= submissions.length %>
+            </div>
+
+            <div class="header-actions">
+                <a href="/kelola-tugas" class="home-link">Kembali ke Kelola Tugas</a>
+            </div>
+
+            <% if (submissions && submissions.length > 0) { %>
+                <% submissions.forEach(function(submission) { %>
+                    <div class="submission-card">
+                        <div class="submission-header">
+                            <div>
+                                <div class="student-info"><%= submission.nama_mhs %> (NIM: <%= submission.nim %>)</div>
+                                <div class="submission-meta">
+                                    Dikumpulkan: <%= new Date(submission.submitted_at).toLocaleString('id-ID') %>
+                                </div>
+                            </div>
+                            <div class="status-badge status-<%= submission.status %>">
+                                <%= submission.status === 'sudah_dinilai' ? 'Sudah Dinilai' : 'Belum Dinilai' %>
+                            </div>
+                        </div>
+
+                        <div class="submission-content">
+                            <% if (tugas.tipe_soal === 'pilgan' && submission.jawaban_pilgan) { %>
+                                <% const questions = tugas.soal_pilgan; %>
+                                <% const answers = submission.jawaban_pilgan; %>
+                                <div class="multiple-choice-answers">
+                                    <% questions.forEach((q, index) => { %>
+                                        <div class="mc-question">
+                                            <strong>Soal <%= index + 1 %>:</strong> <%= q.question %>
+                                            <div class="mc-answer">
+                                                Jawaban: <%= answers[index] ? answers[index].toUpperCase() + '. ' + q.options[answers[index]] : 'Tidak dijawab' %>
+                                                <% if (answers[index] === q.correct) { %>
+                                                    <span class="correct-mark">✓ Benar</span>
+                                                <% } else { %>
+                                                    <span class="wrong-mark">✗ Salah</span>
+                                                <% } %>
+                                            </div>
+                                        </div>
+                                    <% }); %>
+                                </div>
+                            <% } else { %>
+                                <%= submission.jawaban %>
+                            <% } %>
+                        </div>
+
+                        <% if (submission.status === 'sudah_dinilai') { %>
+                            <div class="grade-display">
+                                Nilai: <%= submission.nilai %>
+                            </div>
+                        <% } else { %>
+                            <div class="grading-section">
+                                <form action="/grade-submission/<%= submission.id %>" method="POST" class="grading-form">
+                                    <label for="nilai_<%= submission.id %>">Beri Nilai (0-100):</label>
+                                    <input type="number" name="nilai" id="nilai_<%= submission.id %>" min="0" max="100" step="0.01" required>
+                                    <button type="submit">Simpan Nilai</button>
+                                </form>
+                            </div>
+                        <% } %>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h3>Belum ada submission</h3>
+                    <p>Belum ada mahasiswa yang mengumpulkan tugas ini.</p>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

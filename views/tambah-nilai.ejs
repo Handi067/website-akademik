@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .grade-calculation {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .grade-calculation h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+            </div>
+
+            <h1><i style="font-style: normal;">➕</i> <%= title %></h1>
+
+            <div class="form-container">
+                <form action="/tambah-nilai" method="POST">
+                    <div class="form-group">
+                        <label for="nim">Mahasiswa:</label>
+                        <select name="nim" id="nim" required>
+                            <option value="">-- Pilih Mahasiswa --</option>
+                            <% mahasiswa.forEach(mhs => { %>
+                                <option value="<%= mhs.nim %>"><%= mhs.nim %> - <%= mhs.nama_mhs %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="kode_mk">Mata Kuliah:</label>
+                        <select name="kode_mk" id="kode_mk" required>
+                            <option value="">-- Pilih Mata Kuliah --</option>
+                            <% matakuliah.forEach(mk => { %>
+                                <option value="<%= mk.kode_mk %>"><%= mk.kode_mk %> - <%= mk.nama_mk %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tugas">Nilai Tugas (0-100):</label>
+                        <input type="number" name="tugas" id="tugas" min="0" max="100" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="uts">Nilai UTS (0-100):</label>
+                        <input type="number" name="uts" id="uts" min="0" max="100" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="uas">Nilai UAS (0-100):</label>
+                        <input type="number" name="uas" id="uas" min="0" max="100" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="semester">Semester:</label>
+                        <select name="semester" id="semester" required>
+                            <option value="Ganjil">Ganjil</option>
+                            <option value="Genap">Genap</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tahun_ajaran">Tahun Ajaran:</label>
+                        <input type="text" name="tahun_ajaran" id="tahun_ajaran" placeholder="2024/2025" required>
+                    </div>
+
+                    <div class="grade-calculation">
+                        <h4>Perhitungan Nilai Akhir</h4>
+                        <p>Nilai Akhir = (Tugas × 20%) + (UTS × 30%) + (UAS × 50%)</p>
+                        <p><strong>Nilai Akhir: <span id="nilai-akhir">0.00</span></strong></p>
+                        <p><strong>Grade: <span id="grade">E</span></strong></p>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Simpan Nilai</button>
+                        <a href="/kelola-nilai" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin-left: 10px;">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculateGrade() {
+            const tugas = parseFloat(document.getElementById('tugas').value) || 0;
+            const uts = parseFloat(document.getElementById('uts').value) || 0;
+            const uas = parseFloat(document.getElementById('uas').value) || 0;
+
+            const nilaiAkhir = (tugas * 0.2) + (uts * 0.3) + (uas * 0.5);
+            document.getElementById('nilai-akhir').textContent = nilaiAkhir.toFixed(2);
+
+            let grade = 'E';
+            if (nilaiAkhir >= 85) grade = 'A';
+            else if (nilaiAkhir >= 75) grade = 'B';
+            else if (nilaiAkhir >= 65) grade = 'C';
+            else if (nilaiAkhir >= 55) grade = 'D';
+
+            document.getElementById('grade').textContent = grade;
+        }
+
+        document.getElementById('tugas').addEventListener('input', calculateGrade);
+        document.getElementById('uts').addEventListener('input', calculateGrade);
+        document.getElementById('uas').addEventListener('input', calculateGrade);
+    </script>
+</body>
+</html>

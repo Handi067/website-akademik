@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .assignment-card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: box-shadow 0.2s;
+        }
+        .assignment-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .assignment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .assignment-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        .assignment-meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .assignment-meta span {
+            margin-right: 15px;
+        }
+        .assignment-description {
+            color: #555;
+            margin: 10px 0;
+            line-height: 1.5;
+        }
+        .assignment-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .btn-primary, .btn-secondary, .btn-success, .btn-warning {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #545b62; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #1e7e34; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+        .status-submitted {
+            background: #d4edda;
+            color: #155724;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .status-not-submitted {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .deadline-warning {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .deadline-normal {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/krs" class="<%= activeTab === 'krs' ? 'active' : '' %>">KRS</a>
+                <a href="/tugas" class="active">Tugas</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📝</i> <%= title %></h1>
+
+            <% if (user.role === 'admin') { %>
+                <div class="header-actions">
+                    <a href="/" class="home-link">Home</a>
+                    <a href="/kelola-tugas" class="tambah-link">Kelola Tugas</a>
+                </div>
+            <% } %>
+
+            <% if (tugasData && tugasData.length > 0) { %>
+                <% tugasData.forEach(function(tugas) { %>
+                    <div class="assignment-card">
+                        <div class="assignment-header">
+                            <div>
+                                <h3 class="assignment-title"><%= tugas.judul %></h3>
+                                <div class="assignment-meta">
+                                    <span><strong>Mata Kuliah:</strong> <%= tugas.nama_mk %></span>
+                                    <% if (user.role === 'admin') { %>
+                                        <span><strong>Pengumpulan:</strong> <%= tugas.jumlah_pengumpulan || 0 %> mahasiswa</span>
+                                    <% } %>
+                                </div>
+                            </div>
+                            <% if (user.role !== 'admin') { %>
+                                <div class="status-<%= tugas.status_pengumpulan === 'sudah_mengumpul' ? 'submitted' : 'not-submitted' %>">
+                                    <%= tugas.status_pengumpulan === 'sudah_mengumpul' ? 'Sudah Mengumpul' : 'Belum Mengumpul' %>
+                                </div>
+                            <% } %>
+                        </div>
+
+                        <% if (tugas.deskripsi) { %>
+                            <div class="assignment-description">
+                                <%= tugas.deskripsi.length > 200 ? tugas.deskripsi.substring(0, 200) + '...' : tugas.deskripsi %>
+                            </div>
+                        <% } %>
+
+                        <div class="assignment-meta">
+                            <span class="<%= new Date(tugas.deadline) < new Date() ? 'deadline-warning' : 'deadline-normal' %>">
+                                <strong>Deadline:</strong> <%= new Date(tugas.deadline).toLocaleDateString('id-ID') %>
+                            </span>
+                            <span><strong>Dibuat:</strong> <%= new Date(tugas.created_at).toLocaleDateString('id-ID') %></span>
+                        </div>
+
+                        <div class="assignment-actions">
+                            <a href="/tugas/<%= tugas.id %>" class="btn-primary">Lihat Detail</a>
+                            <% if (user.role === 'admin') { %>
+                                <a href="/tugas/<%= tugas.id %>/submissions" class="btn-secondary">Lihat Submissions</a>
+                            <% } else { %>
+                                <% if (tugas.status_pengumpulan === 'sudah_mengumpul') { %>
+                                    <% if (tugas.status === 'sudah_dinilai') { %>
+                                        <span class="btn-success">Nilai: <%= tugas.nilai %></span>
+                                    <% } else { %>
+                                        <span class="btn-warning">Menunggu Penilaian</span>
+                                    <% } %>
+                                <% } %>
+                            <% } %>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } else { %>
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h3>Belum ada tugas tersedia</h3>
+                    <p>Tugas akan muncul di sini ketika dosen mengupload tugas baru.</p>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

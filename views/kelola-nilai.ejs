@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .grade-breakdown {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .grade-breakdown span {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="active">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📊</i> <%= title %></h1>
+
+            <% if (user.role === 'admin') { %>
+                <div class="header-actions">
+                    <a href="/" class="home-link">Home</a>
+                    <a href="/tambah-nilai" class="tambah-link">Tambah Nilai Baru</a>
+                </div>
+            <% } %>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>NIM</th>
+                            <th>Nama Mahasiswa</th>
+                            <th>Kode MK</th>
+                            <th>Mata Kuliah</th>
+                            <th>Tugas</th>
+                            <th>UTS</th>
+                            <th>UAS</th>
+                            <th>Nilai Akhir</th>
+                            <th>Grade</th>
+                            <th>Semester</th>
+                            <th>Tahun Ajaran</th>
+                            <% if (user.role === 'admin') { %>
+                                <th>Aksi</th>
+                            <% } %>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% nilaiData.forEach(function(item) { %>
+                            <tr>
+                                <td><%= item.nim %></td>
+                                <td><%= item.nama_mhs %></td>
+                                <td><%= item.kode_mk %></td>
+                                <td><%= item.nama_mk %></td>
+                                <td><%= item.tugas %></td>
+                                <td><%= item.uts %></td>
+                                <td><%= item.uas %></td>
+                                <td><strong><%= item.nilai %></strong></td>
+                                <td class="grade-<%= getGradeLetter(item.nilai) %>"><strong><%= getGradeLetter(item.nilai) %></strong></td>
+                                <td><%= item.semester %></td>
+                                <td><%= item.tahun_ajaran %></td>
+                                <% if (user.role === 'admin') { %>
+                                    <td class="actions">
+                                        <a href="/edit-nilai/<%= item.id %>" class="edit-btn">Edit</a>
+                                        <form action="/hapus-nilai/<%= item.id %>" method="POST" style="display:inline;" onsubmit="return confirm('Yakin ingin menghapus nilai <%= item.nama_mhs %> untuk <%= item.nama_mk %>?');">
+                                            <input type="hidden" name="_method" value="DELETE">
+                                            <button type="submit" class="delete-btn">Hapus</button>
+                                        </form>
+                                    </td>
+                                <% } %>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+
+            <% if (nilaiData.length === 0) { %>
+                <p style="text-align: center; padding: 20px; color: #666;">Belum ada data nilai.</p>
+            <% } %>
+        </div>
+    </div>
+
+    <%
+    function getGradeLetter(nilai) {
+        if (nilai >= 85) return 'A';
+        if (nilai >= 75) return 'B';
+        if (nilai >= 65) return 'C';
+        if (nilai >= 55) return 'D';
+        return 'E';
+    }
+    %>
+</body>
+</html>

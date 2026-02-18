@@ -4,26 +4,79 @@
     <meta charset="UTF-8">
     <title>Edit Mahasiswa</title>
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Edit Mahasiswa: **<%= mhs.nama_mhs %>**</h1>
-        
-        <form action="/edit-mhs/<%= mhs.nim %>" method="POST">
-            
-            <label for="nim">NIM:</label><br>
-            <input type="text" id="nim" name="nim" value="<%= mhs.nim %>" disabled><br><br>
-            
-            <label for="nama_mhs">Nama Mahasiswa:</label><br>
-            <input type="text" id="nama_mhs" name="nama_mhs" value="<%= mhs.nama_mhs %>" required maxlength="100"><br><br>
-            
-            <label for="jurusan">Jurusan:</label><br>
-            <input type="text" id="jurusan" name="jurusan" value="<%= mhs.jurusan %>" required maxlength="50"><br><br>
-            
-            <button type="submit" class="form-submit-btn">Simpan Perubahan</button>
-        </form>
-        
-        <p style="margin-top: 20px;"><a href="/mahasiswa-crud">Batal dan Kembali ke Daftar Mahasiswa</a></p>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="active">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+            </div>
+
+            <div class="page-header">
+                <div class="title-wrap">
+                    <h1>Edit Mahasiswa</h1>
+                    <div class="subtle">Perbarui data mahasiswa, lalu simpan perubahan.</div>
+                </div>
+                <div class="header-actions" style="margin: 0;">
+                    <a href="/mahasiswa-crud" class="home-link">Kembali</a>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <form action="/edit-mhs/<%= mhs.nim %>" method="POST">
+                    <div class="form-grid">
+                        <div>
+                            <label for="nim">NIM</label>
+                            <input type="text" id="nim" name="nim" value="<%= mhs.nim %>" disabled>
+                        </div>
+
+                        <div>
+                            <label for="jurusan">Jurusan</label>
+                            <input type="text" id="jurusan" name="jurusan" value="<%= mhs.jurusan %>" required maxlength="50">
+                        </div>
+
+                        <div class="full">
+                            <label for="nama_mhs">Nama Mahasiswa</label>
+                            <input type="text" id="nama_mhs" name="nama_mhs" value="<%= mhs.nama_mhs %>" required maxlength="100">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <a href="/mahasiswa-crud" class="home-link">Batal</a>
+                        <button type="submit" class="form-submit-btn">Simpan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 </body>
 </html>

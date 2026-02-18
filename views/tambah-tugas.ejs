@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="active">Tugas</a>
+            </div>
+
+            <h1><i style="font-style: normal;">➕</i> <%= title %></h1>
+
+            <div class="form-container">
+                <form action="/tambah-tugas" method="POST" id="tugasForm">
+                    <div class="form-group">
+                        <label for="kode_mk">Mata Kuliah:</label>
+                        <select name="kode_mk" id="kode_mk" required>
+                            <option value="">-- Pilih Mata Kuliah --</option>
+                            <% matakuliah.forEach(mk => { %>
+                                <option value="<%= mk.kode_mk %>"><%= mk.kode_mk %> - <%= mk.nama_mk %></option>
+                            <% }); %>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="judul">Judul Tugas:</label>
+                        <input type="text" name="judul" id="judul" placeholder="Masukkan judul tugas" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tipe_soal">Tipe Soal:</label>
+                        <select name="tipe_soal" id="tipe_soal" required onchange="toggleQuestionType()">
+                            <option value="essay">Essay (Jawaban Bebas)</option>
+                            <option value="pilgan">Pilihan Ganda</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="deskripsi">Deskripsi Tugas:</label>
+                        <textarea name="deskripsi" id="deskripsi" placeholder="Jelaskan tugas yang harus dikerjakan mahasiswa..." required></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="deadline">Deadline:</label>
+                        <input type="date" name="deadline" id="deadline" required>
+                    </div>
+
+                    <!-- Multiple Choice Questions Section -->
+                    <div id="pilganSection" style="display: none;">
+                        <h3>Soal Pilihan Ganda</h3>
+                        <div id="questionsContainer">
+                            <div class="question-item" data-index="0">
+                                <h4>Soal 1</h4>
+                                <div class="form-group">
+                                    <label>Pertanyaan:</label>
+                                    <textarea name="question_0" placeholder="Masukkan pertanyaan..." required></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pilihan A:</label>
+                                    <input type="text" name="option_a_0" placeholder="Pilihan A" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pilihan B:</label>
+                                    <input type="text" name="option_b_0" placeholder="Pilihan B" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pilihan C:</label>
+                                    <input type="text" name="option_c_0" placeholder="Pilihan C" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Pilihan D:</label>
+                                    <input type="text" name="option_d_0" placeholder="Pilihan D" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Jawaban Benar:</label>
+                                    <select name="correct_0" required>
+                                        <option value="">-- Pilih Jawaban Benar --</option>
+                                        <option value="a">A</option>
+                                        <option value="b">B</option>
+                                        <option value="c">C</option>
+                                        <option value="d">D</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addQuestion()" style="background: #17a2b8; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; margin: 10px 0;">Tambah Soal</button>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" style="background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Buat Tugas</button>
+                        <a href="/kelola-tugas" style="background: #6c757d; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin-left: 10px;">Batal</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let questionCount = 1;
+
+        function toggleQuestionType() {
+            const tipeSoal = document.getElementById('tipe_soal').value;
+            const pilganSection = document.getElementById('pilganSection');
+            const deskripsiField = document.getElementById('deskripsi');
+
+            if (tipeSoal === 'pilgan') {
+                pilganSection.style.display = 'block';
+                deskripsiField.placeholder = 'Instruksi untuk mengerjakan soal pilihan ganda...';
+            } else {
+                pilganSection.style.display = 'none';
+                deskripsiField.placeholder = 'Jelaskan tugas yang harus dikerjakan mahasiswa...';
+            }
+        }
+
+        function addQuestion() {
+            const container = document.getElementById('questionsContainer');
+            const questionItem = document.createElement('div');
+            questionItem.className = 'question-item';
+            questionItem.setAttribute('data-index', questionCount);
+
+            questionItem.innerHTML = `
+                <h4>Soal ${questionCount + 1}</h4>
+                <div class="form-group">
+                    <label>Pertanyaan:</label>
+                    <textarea name="question_${questionCount}" placeholder="Masukkan pertanyaan..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Pilihan A:</label>
+                    <input type="text" name="option_a_${questionCount}" placeholder="Pilihan A" required>
+                </div>
+                <div class="form-group">
+                    <label>Pilihan B:</label>
+                    <input type="text" name="option_b_${questionCount}" placeholder="Pilihan B" required>
+                </div>
+                <div class="form-group">
+                    <label>Pilihan C:</label>
+                    <input type="text" name="option_c_${questionCount}" placeholder="Pilihan C" required>
+                </div>
+                <div class="form-group">
+                    <label>Pilihan D:</label>
+                    <input type="text" name="option_d_${questionCount}" placeholder="Pilihan D" required>
+                </div>
+                <div class="form-group">
+                    <label>Jawaban Benar:</label>
+                    <select name="correct_${questionCount}" required>
+                        <option value="">-- Pilih Jawaban Benar --</option>
+                        <option value="a">A</option>
+                        <option value="b">B</option>
+                        <option value="c">C</option>
+                        <option value="d">D</option>
+                    </select>
+                </div>
+                <button type="button" onclick="removeQuestion(this)" style="background: #dc3545; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">Hapus Soal</button>
+            `;
+
+            container.appendChild(questionItem);
+            questionCount++;
+        }
+
+        function removeQuestion(button) {
+            button.parentElement.remove();
+            // Re-index remaining questions
+            const questions = document.querySelectorAll('.question-item');
+            questions.forEach((q, index) => {
+                q.setAttribute('data-index', index);
+                q.querySelector('h4').textContent = `Soal ${index + 1}`;
+
+                // Update input names
+                const inputs = q.querySelectorAll('input, textarea, select');
+                inputs.forEach(input => {
+                    const name = input.name;
+                    if (name) {
+                        const parts = name.split('_');
+                        if (parts.length > 1) {
+                            input.name = parts[0] + '_' + index + (parts.length > 2 ? '_' + parts.slice(2).join('_') : '');
+                        }
+                    }
+                });
+            });
+            questionCount = questions.length;
+        }
+    </script>
+</body>
+</html>

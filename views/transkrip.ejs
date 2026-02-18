@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .grade-table {
+            margin-top: 20px;
+        }
+        .grade-summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .grade-A { color: #28a745; font-weight: bold; }
+        .grade-B { color: #007bff; font-weight: bold; }
+        .grade-C { color: #ffc107; font-weight: bold; }
+        .grade-D { color: #fd7e14; font-weight: bold; }
+        .grade-E { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <% 
+    function getGradeLetter(nilai) {
+        if (nilai >= 85) return 'A';
+        if (nilai >= 75) return 'B';
+        if (nilai >= 65) return 'C';
+        if (nilai >= 55) return 'D';
+        return 'E';
+    }
+    %>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📊</i> <%= title %></h1>
+
+            <% if (user.role === 'admin') { %>
+                <div class="transcript-header">
+                    <div>
+                        <form method="GET" style="display: inline;">
+                            <label for="nim-select">Pilih Mahasiswa:</label>
+                            <select name="nim" id="nim-select" onchange="this.form.submit()">
+                                <option value="">-- Pilih Mahasiswa --</option>
+                                <% mahasiswa.forEach(mhs => { %>
+                                    <option value="<%= mhs.nim %>" <%= selectedNim === mhs.nim ? 'selected' : '' %>>
+                                        <%= mhs.nim %> - <%= mhs.nama_mhs %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            <% } %>
+
+            <% if (transkripData && transkripData.length > 0) { %>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Kode MK</th>
+                                <th>Nama Mata Kuliah</th>
+                                <th>SKS</th>
+                                <th>Nilai</th>
+                                <th>Grade</th>
+                                <th>Semester</th>
+                                <th>Tahun Ajaran</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% let totalSks = 0; let totalNilai = 0; %>
+                            <% transkripData.forEach(item => { %>
+                                <% totalSks += item.sks; %>
+                                <% totalNilai += item.nilai * item.sks; %>
+                                <tr>
+                                    <td><%= item.kode_mk %></td>
+                                    <td><%= item.nama_mk %></td>
+                                    <td><%= item.sks %></td>
+                                    <td><%= item.nilai %></td>
+                                    <td class="grade-<%= getGradeLetter(item.nilai) %>"><%= getGradeLetter(item.nilai) %></td>
+                                    <td><%= item.semester %></td>
+                                    <td><%= item.tahun_ajaran %></td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="grade-summary">
+                    <h3>Ringkasan IPK</h3>
+                    <p><strong>Total SKS:</strong> <%= totalSks %></p>
+                    <p><strong>IPK:</strong> <%= (totalNilai / totalSks).toFixed(2) %></p>
+                </div>
+            <% } else { %>
+                <p>Belum ada data nilai untuk mahasiswa ini.</p>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

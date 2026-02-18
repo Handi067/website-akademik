@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .schedule-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .schedule-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            background: #f9f9f9;
+        }
+        .schedule-time {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+        }
+        .schedule-course {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .schedule-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .day-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/krs" class="<%= activeTab === 'krs' ? 'active' : '' %>">KRS</a>
+                <a href="/tugas" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📅</i> <%= title %></h1>
+
+            <% if (jadwalData && jadwalData.length > 0) { %>
+                <% const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu']; %>
+                <% days.forEach(day => { %>
+                    <% const daySchedule = jadwalData.filter(item => item.hari === day); %>
+                    <% if (daySchedule.length > 0) { %>
+                        <div class="day-header"><%= day %></div>
+                        <div class="schedule-grid">
+                            <% daySchedule.forEach(schedule => { %>
+                                <div class="schedule-card">
+                                    <div class="schedule-time">
+                                        <%= schedule.jam_mulai %> - <%= schedule.jam_selesai %>
+                                    </div>
+                                    <div class="schedule-course">
+                                        <%= schedule.nama_mk %> (<%= schedule.sks %> SKS)
+                                    </div>
+                                    <div class="schedule-info">
+                                        <strong>Kode:</strong> <%= schedule.kode_mk %> |
+                                        <strong>Ruangan:</strong> <%= schedule.ruangan %> |
+                                        <strong>Semester:</strong> <%= schedule.semester %> |
+                                        <strong>Tahun:</strong> <%= schedule.tahun_ajaran %>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                <% }); %>
+            <% } else { %>
+                <p>Belum ada jadwal kuliah yang tersedia.</p>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

@@ -3,34 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <title><%= title %></title>
-    <link rel="stylesheet" href="/css/style.css"> 
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1><i style="font-style: normal;">🏠</i> <%= title %></h1>
-        <hr>
-
-        <div class="header-actions">
-            <a href="/mk-postgres" class="tambah-link">Lihat Daftar Mata Kuliah (CRUD)</a>
-            <a href="/mahasiswa-crud" class="tambah-link" style="background-color: #ffc107; color: #333;">Kelola Mahasiswa</a>
+    <header style="background: #007bff; color: white; padding: 10px 15px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto;">
+            <div>
+                <h2 style="margin: 0; font-size: 1.2em;">Portal Akademik</h2>
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span>Selamat datang, <strong><%= user.username %></strong> (<%= user.role %>)</span>
+                <form action="/logout" method="POST" style="margin: 0;">
+                    <button type="submit" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 14px;">Logout</button>
+                </form>
+            </div>
         </div>
+    </header>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs" style="display: flex; border-bottom: 1px solid #cccccc; margin-bottom: 20px;">
+                <a href="/" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/krs" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'krs' ? 'active' : '' %>">KRS</a>
+                <a href="/tugas" style="padding: 10px 15px; text-decoration: none; color: #666666; border-bottom: 2px solid transparent; font-weight: bold;" class="<%= activeTab === 'tugas' ? 'active' : '' %>">Tugas</a>
+            </div>
+            <style>
+                .nav-tabs a:hover { color: #007bff; }
+                .nav-tabs a.active { color: #007bff; border-bottom-color: #007bff; }
+            </style>
 
-        <div class="announcement">
-            <h3>Pengumuman Sistem:</h3>
-            <% if (pengumuman && pengumuman.length > 0) { %>
-                <ul>
-                    <% pengumuman.forEach(function(item) { %>
-                        <li><%= item %></li>
-                    <% }); %>
-                </ul>
-            <% } else { %>
-                <p>Tidak ada pengumuman baru saat ini.</p>
-            <% } %>
+            <h1><i style="font-style: normal;">🏠</i> <%= title %></h1>
+            <hr>
+
+            <div class="container-grid">
+                <div class="left-panel">
+                    <div class="card info-card">
+                        <h3>Menu Cepat</h3>
+                        <div class="header-actions" style="margin-bottom: 0;">
+                            <% if (user.role === 'admin') { %>
+                                <a href="/mk-postgres" class="tambah-link">Lihat Daftar Mata Kuliah (CRUD)</a>
+                                <a href="/mahasiswa-crud" class="warning-link">Kelola Mahasiswa</a>
+                            <% } else { %>
+                                <a href="/mata-kuliah-view" class="tambah-link">Lihat Daftar Mata Kuliah</a>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <div class="card info-card">
+                        <h3>Info Aplikasi</h3>
+                        <ul style="margin: 10px 0 0 18px;">
+                            <li><strong>Nama</strong>: <%= (appInfo && appInfo.name) ? appInfo.name : 'Portal Akademik' %></li>
+                            <li><strong>Versi</strong>: <%= (appInfo && appInfo.version) ? appInfo.version : '-' %></li>
+                            <li><strong>Stack</strong>: <%= (appInfo && appInfo.stack) ? appInfo.stack : 'Node.js, Express, EJS, PostgreSQL' %></li>
+                            <li><strong>Port</strong>: <%= (appInfo && appInfo.port) ? appInfo.port : 3000 %></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="right-panel">
+                    <div class="card info-card">
+                        <h3>Pengumuman Sistem</h3>
+                        <% if (pengumuman && pengumuman.length > 0) { %>
+                            <ul style="margin: 10px 0 0 18px;">
+                                <% pengumuman.forEach(function(item) { %>
+                                    <li><%= item %></li>
+                                <% }); %>
+                            </ul>
+                        <% } else { %>
+                            <p>Tidak ada pengumuman baru saat ini.</p>
+                        <% } %>
+                    </div>
+
+                    <div class="card info-card">
+                        <h3>Panduan Singkat</h3>
+                        <ol style="margin: 10px 0 0 18px;">
+                            <li>Buka <strong>Mata Kuliah</strong> untuk menambah/ubah/hapus MK.</li>
+                            <li>Masuk <strong>Kelola Pertemuan</strong> untuk membuat pertemuan per MK.</li>
+                            <li>Isi <strong>Absensi</strong> tiap pertemuan, lalu cek <strong>Rekap</strong>.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
         </div>
-
-        <p style="margin-top: 30px; font-style: italic;">
-            Aplikasi ini dibangun menggunakan Node.js, Express, EJS, dan PostgreSQL.
-        </p>
     </div>
 </body>
 </html>

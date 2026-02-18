@@ -6,50 +6,90 @@
     <link rel="stylesheet" href="/css/style.css"> 
 </head>
 <body>
-    <div class="container">
-        <h1>Formulir Absensi</h1>
-        <h2>Mata Kuliah: **<%= nama_mk %>** (<%= pertemuan.kode_mk %>)</h2>
-        <h3>Pertemuan Tanggal: **<%= pertemuan.tanggal.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) %>**</h3>
-        <p>Topik Pembahasan: *<%= pertemuan.topik %>*</p>
+    <div class="main-content">
+        <div class="container">
+            <div class="page-header">
+                <div class="title-wrap">
+                    <h1>Formulir Absensi</h1>
+                    <div class="subtle">Isi kehadiran mahasiswa untuk pertemuan yang dipilih, lalu simpan.</div>
+                </div>
+                <div class="header-actions" style="margin: 0;">
+                    <a href="/mk-postgres" class="home-link">Kembali</a>
+                </div>
+            </div>
 
-        <form action="/absen/<%= pertemuan.kode_mk %>/<%= pertemuan.id_pertemuan %>" method="POST">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 20%;">NIM</th>
-                        <th style="width: 50%;">Nama Mahasiswa</th>
-                        <th style="width: 30%;">Status Kehadiran</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <% mahasiswa.forEach(function(mhs) { %>
-                        <tr>
-                            <td><%= mhs.nim %></td>
-                            <td style="text-align: left;"><%= mhs.nama_mhs %></td>
-                            <td class="absensi-status">
-                                <input type="radio" 
-                                       id="hadir_<%= mhs.nim %>" 
-                                       name="<%= mhs.nim %>" 
-                                       value="hadir" 
-                                       <%= existingAbsen[mhs.nim] === true ? 'checked' : '' %> required>
-                                <label for="hadir_<%= mhs.nim %>">Hadir</label>
+            <div class="form-card" style="margin-top: 10px;">
+                <h2 style="margin-top: 0;">Mata Kuliah: <strong><%= nama_mk %></strong> (<%= pertemuan.kode_mk %>)</h2>
 
-                                <input type="radio" 
-                                       id="tidak_hadir_<%= mhs.nim %>" 
-                                       name="<%= mhs.nim %>" 
-                                       value="tidak_hadir" 
-                                       <%= existingAbsen[mhs.nim] === false ? 'checked' : '' %> required>
-                                <label for="tidak_hadir_<%= mhs.nim %>">Tidak Hadir</label>
-                            </td>
-                        </tr>
-                    <% }); %>
-                </tbody>
-            </table>
-            
-            <button type="submit" class="form-submit-btn">Simpan/Update Absensi</button>
-        </form>
-        
-        <p style="margin-top: 30px;"><a href="/mk-postgres">Kembali ke Daftar Mata Kuliah</a></p>
+                <div class="meta-grid">
+                    <div class="meta-item">
+                        <span class="label">ID Pertemuan</span>
+                        <span class="value"><%= pertemuan.id_pertemuan %></span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Tanggal</span>
+                        <span class="value"><%= pertemuan.tanggal.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>
+                    </div>
+                    <div class="meta-item" style="grid-column: 1 / -1;">
+                        <span class="label">Topik/Materi</span>
+                        <span class="value"><%= pertemuan.topik %></span>
+                    </div>
+                </div>
+            </div>
+
+            <form action="/absen/<%= pertemuan.kode_mk %>/<%= pertemuan.id_pertemuan %>" method="POST" style="margin-top: 16px;">
+                <div class="form-actions" style="justify-content: space-between; margin-bottom: 10px;">
+                    <span class="subtle">Tip: pastikan semua mahasiswa sudah dipilih “Hadir / Tidak Hadir”.</span>
+                    <button type="submit" class="form-submit-btn">Simpan Absensi</button>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 18%;">NIM</th>
+                                <th style="width: 52%;">Nama Mahasiswa</th>
+                                <th style="width: 30%;">Status Kehadiran</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% mahasiswa.forEach(function(mhs) { %>
+                                <tr>
+                                    <td><%= mhs.nim %></td>
+                                    <td style="text-align: left;"><%= mhs.nama_mhs %></td>
+                                    <td>
+                                        <div class="radio-group">
+                                            <label class="radio-pill hadir" for="hadir_<%= mhs.nim %>">
+                                                <input type="radio"
+                                                       id="hadir_<%= mhs.nim %>"
+                                                       name="<%= mhs.nim %>"
+                                                       value="hadir"
+                                                       <%= existingAbsen[mhs.nim] === true ? 'checked' : '' %> required>
+                                                Hadir
+                                            </label>
+
+                                            <label class="radio-pill tidak" for="tidak_hadir_<%= mhs.nim %>">
+                                                <input type="radio"
+                                                       id="tidak_hadir_<%= mhs.nim %>"
+                                                       name="<%= mhs.nim %>"
+                                                       value="tidak_hadir"
+                                                       <%= existingAbsen[mhs.nim] === false ? 'checked' : '' %> required>
+                                                Tidak Hadir
+                                            </label>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="form-actions">
+                    <a href="/mk-postgres" class="home-link">Batal</a>
+                    <button type="submit" class="form-submit-btn">Simpan Absensi</button>
+                </div>
+            </form>
+        </div>
     </div>
 </body>
 </html>

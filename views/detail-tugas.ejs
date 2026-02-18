@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .nav-tabs {
+            display: flex;
+            border-bottom: 1px solid #cccccc;
+            margin-bottom: 20px;
+        }
+        .nav-tabs a {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: #666666;
+            border-bottom: 2px solid transparent;
+            font-weight: bold;
+        }
+        .nav-tabs a:hover {
+            color: #007bff;
+        }
+        .nav-tabs a.active {
+            color: #007bff;
+            border-bottom-color: #007bff;
+        }
+        .assignment-detail {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .assignment-header {
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+        .assignment-title {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin: 0 0 10px 0;
+        }
+        .assignment-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .assignment-meta div {
+            display: flex;
+            align-items: center;
+        }
+        .assignment-meta strong {
+            margin-right: 5px;
+        }
+        .assignment-description {
+            line-height: 1.6;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .submission-section {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .submission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .submission-status {
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .status-submitted { background: #d4edda; color: #155724; }
+        .status-not-submitted { background: #f8d7da; color: #721c24; }
+        .status-graded { background: #d1ecf1; color: #0c5460; }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+        }
+        .multiple-choice-section {
+            margin-bottom: 20px;
+        }
+        .question-item {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .question-item h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        .question-item p {
+            margin: 0 0 15px 0;
+            font-weight: 500;
+        }
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .option {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .option:hover {
+            background-color: #e9ecef;
+        }
+        .option input[type="radio"] {
+            margin-right: 10px;
+        }
+        .option span {
+            font-weight: 500;
+        }
+        .grade-display {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .grade {
+            font-size: 2em;
+            font-weight: bold;
+            color: #007bff;
+            margin-top: 5px;
+        }
+        .form-group textarea:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        .btn-submit {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn-submit:hover {
+            background: #1e7e34;
+        }
+        .deadline-warning {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .deadline-normal {
+            color: #666;
+        }
+        .grade-display {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            text-align: center;
+        }
+        .grade-display .grade {
+            font-size: 2em;
+            font-weight: bold;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="container">
+            <div class="nav-tabs">
+                <a href="/" class="<%= activeTab === 'dashboard' ? 'active' : '' %>">Dashboard</a>
+                <a href="/mk-postgres" class="<%= activeTab === 'mata-kuliah' ? 'active' : '' %>">Mata Kuliah</a>
+                <a href="/mahasiswa-crud" class="<%= activeTab === 'mahasiswa' ? 'active' : '' %>">Mahasiswa</a>
+                <a href="/mata-kuliah-view" class="<%= activeTab === 'absensi' ? 'active' : '' %>">Absensi</a>
+                <a href="/kelola-nilai" class="<%= activeTab === 'nilai' ? 'active' : '' %>">Kelola Nilai</a>
+                <a href="/transkrip" class="<%= activeTab === 'transkrip' ? 'active' : '' %>">Transkrip Nilai</a>
+                <a href="/perpustakaan" class="<%= activeTab === 'perpustakaan' ? 'active' : '' %>">Perpustakaan</a>
+                <a href="/jadwal" class="<%= activeTab === 'jadwal' ? 'active' : '' %>">Jadwal Kuliah</a>
+                <a href="/tugas" class="active">Tugas</a>
+            </div>
+
+            <h1><i style="font-style: normal;">📝</i> Detail Tugas</h1>
+
+            <div class="assignment-detail">
+                <div class="assignment-header">
+                    <h2 class="assignment-title"><%= tugas.judul %></h2>
+                    <div class="assignment-meta">
+                        <div><strong>Mata Kuliah:</strong> <%= tugas.nama_mk %></div>
+                        <div class="<%= new Date(tugas.deadline) < new Date() ? 'deadline-warning' : 'deadline-normal' %>">
+                            <strong>Deadline:</strong> <%= new Date(tugas.deadline).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) %>
+                        </div>
+                        <div><strong>Dibuat:</strong> <%= new Date(tugas.created_at).toLocaleDateString('id-ID') %></div>
+                    </div>
+                </div>
+
+                <div class="assignment-description">
+                    <%= tugas.deskripsi %>
+                </div>
+            </div>
+
+            <div class="submission-section">
+                <div class="submission-header">
+                    <h3>Pengumpulan Tugas</h3>
+                    <% if (jawaban) { %>
+                        <div class="submission-status <%= jawaban.status === 'sudah_dinilai' ? 'status-graded' : 'status-submitted' %>">
+                            <%= jawaban.status === 'sudah_dinilai' ? 'Sudah Dinilai' : 'Menunggu Penilaian' %>
+                        </div>
+                    <% } else { %>
+                        <div class="submission-status status-not-submitted">
+                            Belum Mengumpul
+                        </div>
+                    <% } %>
+                </div>
+
+                <% if (jawaban && jawaban.status === 'sudah_dinilai') { %>
+                    <div class="grade-display">
+                        <div>Nilai Tugas</div>
+                        <div class="grade"><%= jawaban.nilai %></div>
+                    </div>
+                <% } %>
+
+                <form action="/submit-tugas/<%= tugas.id %>" method="POST">
+                    <input type="hidden" name="tipe_soal" value="<%= tugas.tipe_soal %>">
+
+                    <% if (tugas.tipe_soal === 'pilgan' && tugas.soal_pilgan) { %>
+                        <% const questions = tugas.soal_pilgan; %>
+                        <% const answers = jawaban && jawaban.jawaban_pilgan ? jawaban.jawaban_pilgan : {}; %>
+
+                        <div class="multiple-choice-section">
+                            <% questions.forEach((q, index) => { %>
+                                <div class="question-item">
+                                    <h4>Soal <%= index + 1 %>:</h4>
+                                    <p><%= q.question %></p>
+
+                                    <div class="options">
+                                        <label class="option">
+                                            <input type="radio" name="answer_<%= index %>" value="a" <%= answers[index] === 'a' ? 'checked' : '' %> required>
+                                            <span>A. <%= q.options.a %></span>
+                                        </label>
+                                        <label class="option">
+                                            <input type="radio" name="answer_<%= index %>" value="b" <%= answers[index] === 'b' ? 'checked' : '' %>>
+                                            <span>B. <%= q.options.b %></span>
+                                        </label>
+                                        <label class="option">
+                                            <input type="radio" name="answer_<%= index %>" value="c" <%= answers[index] === 'c' ? 'checked' : '' %>>
+                                            <span>C. <%= q.options.c %></span>
+                                        </label>
+                                        <label class="option">
+                                            <input type="radio" name="answer_<%= index %>" value="d" <%= answers[index] === 'd' ? 'checked' : '' %>>
+                                            <span>D. <%= q.options.d %></span>
+                                        </label>
+                                    </div>
+                                </div>
+                            <% }); %>
+                        </div>
+                    <% } else { %>
+                        <div class="form-group">
+                            <label for="jawaban">Jawaban Tugas:</label>
+                            <textarea name="jawaban" id="jawaban" placeholder="Ketik jawaban tugas Anda di sini..." required><%= jawaban ? jawaban.jawaban : '' %></textarea>
+                        </div>
+                    <% } %>
+
+                    <div style="margin-top: 20px;">
+                        <button type="submit" class="btn-submit">
+                            <%= jawaban ? 'Update Jawaban' : 'Kirim Jawaban' %>
+                        </button>
+                        <a href="/tugas" style="background: #6c757d; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin-left: 10px;">Kembali</a>
+                    </div>
+                </form>
+
+                <% if (jawaban) { %>
+                    <div style="margin-top: 15px; color: #666; font-size: 0.9em;">
+                        Terakhir diupdate: <%= new Date(jawaban.submitted_at).toLocaleString('id-ID') %>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
