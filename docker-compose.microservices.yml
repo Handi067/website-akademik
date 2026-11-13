@@ -1,0 +1,437 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    image: kong:3.4
+    container_name: api-gateway
+    ports:
+      - "8080:8000"
+      - "8443:8443"
+      - "8001:8001"
+      - "8444:8444"
+    environment:
+      KONG_DATABASE: "postgres"
+      KONG_PG_HOST: postgres-kong
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_ADMIN_GUI_URL: "http://localhost:8002"
+    depends_on:
+      - postgres-kong
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Kong Database
+  postgres-kong:
+    image: postgres:15
+    container_name: postgres-kong
+    environment:
+      POSTGRES_USER: kong
+      POSTGRES_PASSWORD: kong_password
+      POSTGRES_DB: kong
+    volumes:
+      - postgres-kong-data:/var/lib/postgresql/data
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Kong Migration
+  kong-migration:
+    image: kong:3.4
+    container_name: kong-migration
+    command: kong migrations bootstrap
+    environment:
+      KONG_DATABASE: "postgres"
+      KONG_PG_HOST: postgres-kong
+      KONG_PG_DATABASE: kong
+      KONG_PG_USER: kong
+      KONG_PG_PASSWORD: kong_password
+    depends_on:
+      - postgres-kong
+    networks:
+      - academic-network
+    restart: on-failure
+
+  # Auth Service
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8001:8001"
+      - "9090:9090"
+    environment:
+      ENVIRONMENT: development
+      PORT: 8001
+      LOG_LEVEL: debug
+      DATABASE_HOST: postgres-auth
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: auth_db
+      DATABASE_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      KAFKA_BROKERS: kafka:9092
+      JWT_SECRET: your-super-secret-jwt-key-here-make-it-long-and-secure
+      JWT_ACCESS_EXPIRY: 15m
+      JWT_REFRESH_EXPIRY: 7d
+      JWT_ISSUER: academic-system
+      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
+    depends_on:
+      - postgres-auth
+      - redis
+      - kafka
+    networks:
+      - academic-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Auth Service Database
+  postgres-auth:
+    image: postgres:15
+    container_name: postgres-auth
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-auth-data:/var/lib/postgresql/data
+      - ./services/auth-service/internal/infrastructure/database/migrations:/docker-entrypoint-initdb.d
+    networks:
+      - academic-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Student Service
+  student-service:
+    build:
+      context: ./services/student-service
+      dockerfile: Dockerfile
+    container_name: student-service
+    ports:
+      - "8002:8002"
+      - "9091:9091"
+    environment:
+      ENVIRONMENT: development
+      PORT: 8002
+      LOG_LEVEL: debug
+      DATABASE_HOST: postgres-student
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: student_db
+      DATABASE_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 1
+      KAFKA_BROKERS: kafka:9092
+      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
+    depends_on:
+      - postgres-student
+      - redis
+      - kafka
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Student Service Database
+  postgres-student:
+    image: postgres:15
+    container_name: postgres-student
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: student_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-student-data:/var/lib/postgresql/data
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Course Service
+  course-service:
+    build:
+      context: ./services/course-service
+      dockerfile: Dockerfile
+    container_name: course-service
+    ports:
+      - "8004:8004"
+      - "9092:9092"
+    environment:
+      ENVIRONMENT: development
+      PORT: 8004
+      LOG_LEVEL: debug
+      DATABASE_HOST: postgres-course
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: course_db
+      DATABASE_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 2
+      KAFKA_BROKERS: kafka:9092
+      JAEGER_ENDPOINT: http://jaeger:14268/api/traces
+    depends_on:
+      - postgres-course
+      - redis
+      - kafka
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Course Service Database
+  postgres-course:
+    image: postgres:15
+    container_name: postgres-course
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: course_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres-course-data:/var/lib/postgresql/data
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - academic-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # Kafka
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "9101:9101"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,PLAINTEXT_HOST://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    depends_on:
+      - zookeeper
+    networks:
+      - academic-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Kafka UI
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8081:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:1.49
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      COLLECTOR_OTLP_ENABLED: true
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infrastructure/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./infrastructure/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Elasticsearch
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.4
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Kibana
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.4
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Logstash
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.10.4
+    container_name: logstash
+    ports:
+      - "5044:5044"
+    volumes:
+      - ./infrastructure/logging/logstash/pipeline:/usr/share/logstash/pipeline
+      - ./infrastructure/logging/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+    depends_on:
+      - elasticsearch
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_API_URL: http://localhost:8080
+      REACT_APP_ENVIRONMENT: development
+    depends_on:
+      - api-gateway
+    networks:
+      - academic-network
+    restart: unless-stopped
+
+volumes:
+  postgres-kong-data:
+  postgres-auth-data:
+  postgres-student-data:
+  postgres-course-data:
+  redis-data:
+  zookeeper-data:
+  zookeeper-logs:
+  kafka-data:
+  prometheus-data:
+  grafana-data:
+  elasticsearch-data:
+
+networks:
+  academic-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

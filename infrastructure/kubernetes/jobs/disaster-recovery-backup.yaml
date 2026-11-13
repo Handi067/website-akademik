@@ -1,0 +1,699 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: disaster-recovery-backup
+  namespace: academic-system
+  labels:
+    app: disaster-recovery-backup
+    component: backup
+    part-of: academic-system
+    backup-type: disaster-recovery
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  startingDeadlineSeconds: 300
+  suspend: false
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: disaster-recovery-backup
+            component: backup
+            part-of: academic-system
+            backup-type: disaster-recovery
+          annotations:
+            sidecar.istio.io/inject: "false"
+            kubernetes.io/psp: "restricted"
+            security.alpha.kubernetes.io/allow-privileged: "false"
+            security.alpha.kubernetes.io/allow-privilege-escalation: "false"
+        spec:
+          serviceAccountName: disaster-recovery-backup
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1001
+            runAsGroup: 1001
+            fsGroup: 1001
+            seccompProfile:
+              type: RuntimeDefault
+            readOnlyRootFilesystem: true
+          restartPolicy: OnFailure
+          activeDeadlineSeconds: 3600
+          ttlSecondsAfterFinished: 86400
+          initContainers:
+          - name: init-backup
+            image: postgres:15-alpine
+            command: ["sh", "-c", "until pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER; do echo waiting for database; sleep 2; done"]
+            env:
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: database-host
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: database-port
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: backup-db-user
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "50m"
+              limits:
+                memory: "128Mi"
+                cpu: "100m"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+          containers:
+          - name: postgres-backup
+            image: postgres:15-alpine
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              set -e
+              echo "Starting PostgreSQL backup..."
+              
+              # Set environment variables
+              export PGPASSWORD="$DATABASE_PASSWORD"
+              export BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+              export BACKUP_FILE="auth_db_backup_$BACKUP_DATE.sql"
+              export ENCRYPTED_BACKUP_FILE="$BACKUP_FILE.enc"
+              
+              echo "Backup date: $BACKUP_DATE"
+              echo "Backup file: $BACKUP_FILE"
+              
+              # Create backup directory
+              mkdir -p /backups/postgres
+              cd /backups/postgres
+              
+              # Create database backup
+              echo "Creating database backup..."
+              pg_dump -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER -d $DATABASE_NAME \
+                --no-password \
+                --verbose \
+                --clean \
+                --if-exists \
+                --create \
+                --format=custom \
+                --compress=9 \
+                --lock-wait-timeout=30000 \
+                --exclude-table-data='audit_logs' \
+                --exclude-table-data='user_sessions' \
+                --exclude-table-data='refresh_tokens' \
+                --file="$BACKUP_FILE"
+              
+              echo "Database backup completed: $BACKUP_FILE"
+              
+              # Verify backup integrity
+              echo "Verifying backup integrity..."
+              pg_restore --list "$BACKUP_FILE" > /dev/null 2>&1
+              if [ $? -eq 0 ]; then
+                echo "Backup integrity verified"
+              else
+                echo "Backup integrity check failed"
+                exit 1
+              fi
+              
+              # Encrypt backup
+              echo "Encrypting backup..."
+              openssl enc -aes-256-cbc -salt -in "$BACKUP_FILE" -out "$ENCRYPTED_BACKUP_FILE" -pass pass:$ENCRYPTION_KEY -iv $ENCRYPTION_IV
+              
+              echo "Backup encrypted: $ENCRYPTED_BACKUP_FILE"
+              
+              # Remove unencrypted backup
+              rm "$BACKUP_FILE"
+              
+              # Upload to AWS S3
+              echo "Uploading to AWS S3..."
+              aws s3 cp "$ENCRYPTED_BACKUP_FILE" "s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/postgres/$ENCRYPTED_BACKUP_FILE" \
+                --server-side-encryption AES256 \
+                --metadata backup-date="$BACKUP_DATE",service="auth-service",type="postgres"
+              
+              echo "Uploaded to AWS S3: s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/postgres/$ENCRYPTED_BACKUP_FILE"
+              
+              # Upload to Google Cloud Storage (backup)
+              echo "Uploading to Google Cloud Storage..."
+              echo "$GCP_SERVICE_ACCOUNT_KEY" > /tmp/gcp-key.json
+              export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-key.json"
+              gsutil cp "$ENCRYPTED_BACKUP_FILE" "gs://$GCP_STORAGE_BUCKET/postgres/$ENCRYPTED_BACKUP_FILE"
+              
+              echo "Uploaded to Google Cloud Storage: gs://$GCP_STORAGE_BUCKET/postgres/$ENCRYPTED_BACKUP_FILE"
+              
+              # Upload to Azure Blob Storage (backup)
+              echo "Uploading to Azure Blob Storage..."
+              az storage blob upload \
+                --file "$ENCRYPTED_BACKUP_FILE" \
+                --name "postgres/$ENCRYPTED_BACKUP_FILE" \
+                --container-name "$AZURE_STORAGE_CONTAINER" \
+                --account-name "$AZURE_STORAGE_ACCOUNT" \
+                --account-key "$AZURE_STORAGE_KEY"
+              
+              echo "Uploaded to Azure Blob Storage: $AZURE_STORAGE_CONTAINER/postgres/$ENCRYPTED_BACKUP_FILE"
+              
+              # Cleanup local files
+              rm "$ENCRYPTED_BACKUP_FILE"
+              rm /tmp/gcp-key.json
+              
+              echo "PostgreSQL backup completed successfully"
+              
+              # Send success notification
+              curl -X POST "$SLACK_WEBHOOK_URL" \
+                -H 'Content-type: application/json' \
+                -d "{\"text\":\"✅ PostgreSQL backup completed successfully for auth-service on $BACKUP_DATE\"}"
+              
+              # Send email notification
+              echo "Subject: PostgreSQL Backup Success - Academic System
+              
+              PostgreSQL backup completed successfully for auth-service.
+              
+              Backup Details:
+              - Date: $BACKUP_DATE
+              - Service: auth-service
+              - Database: $DATABASE_NAME
+              - Size: $(aws s3 ls s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/postgres/$ENCRYPTED_BACKUP_FILE --summarize | grep Total | awk '{print $3}') bytes
+              - Location: s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/postgres/$ENCRYPTED_BACKUP_FILE
+              
+              Backup uploaded to:
+              - AWS S3: s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/postgres/$ENCRYPTED_BACKUP_FILE
+              - Google Cloud Storage: gs://$GCP_STORAGE_BUCKET/postgres/$ENCRYPTED_BACKUP_FILE
+              - Azure Blob Storage: $AZURE_STORAGE_CONTAINER/postgres/$ENCRYPTED_BACKUP_FILE
+              
+              This is an automated message from the Academic System Disaster Recovery Backup." | \
+              sendmail -t
+            env:
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: database-host
+            - name: DATABASE_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: database-port
+            - name: DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: backup-db-user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: backup-db-password
+            - name: DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: database-name
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: backup-encryption-key
+            - name: ENCRYPTION_IV
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: backup-encryption-iv
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-secret-access-key
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-region
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-s3-bucket
+            - name: AWS_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-s3-prefix
+            - name: GCP_SERVICE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: gcp-service-account-key
+            - name: GCP_STORAGE_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: gcp-storage-bucket
+            - name: AZURE_STORAGE_ACCOUNT
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: azure-storage-account
+            - name: AZURE_STORAGE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: azure-storage-key
+            - name: AZURE_STORAGE_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: azure-storage-container
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: slack-webhook-url
+            - name: EMAIL_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: email-from
+            - name: EMAIL_TO
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: email-to
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "250m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+          - name: redis-backup
+            image: redis:7-alpine
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              set -e
+              echo "Starting Redis backup..."
+              
+              export BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+              export BACKUP_FILE="redis_backup_$BACKUP_DATE.rdb"
+              export ENCRYPTED_BACKUP_FILE="$BACKUP_FILE.enc"
+              
+              echo "Backup date: $BACKUP_DATE"
+              echo "Backup file: $BACKUP_FILE"
+              
+              # Create backup directory
+              mkdir -p /backups/redis
+              cd /backups/redis
+              
+              # Connect to Redis and create backup
+              echo "Creating Redis backup..."
+              redis-cli -h $REDIS_HOST -p $REDIS_PORT --rdb "$BACKUP_FILE"
+              
+              echo "Redis backup completed: $BACKUP_FILE"
+              
+              # Verify backup integrity
+              if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
+                echo "Redis backup integrity verified"
+              else
+                echo "Redis backup integrity check failed"
+                exit 1
+              fi
+              
+              # Encrypt backup
+              echo "Encrypting backup..."
+              openssl enc -aes-256-cbc -salt -in "$BACKUP_FILE" -out "$ENCRYPTED_BACKUP_FILE" -pass pass:$ENCRYPTION_KEY -iv $ENCRYPTION_IV
+              
+              echo "Backup encrypted: $ENCRYPTED_BACKUP_FILE"
+              
+              # Remove unencrypted backup
+              rm "$BACKUP_FILE"
+              
+              # Upload to AWS S3
+              echo "Uploading to AWS S3..."
+              aws s3 cp "$ENCRYPTED_BACKUP_FILE" "s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/redis/$ENCRYPTED_BACKUP_FILE" \
+                --server-side-encryption AES256 \
+                --metadata backup-date="$BACKUP_DATE",service="auth-service",type="redis"
+              
+              echo "Uploaded to AWS S3: s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/redis/$ENCRYPTED_BACKUP_FILE"
+              
+              # Upload to Google Cloud Storage (backup)
+              echo "Uploading to Google Cloud Storage..."
+              echo "$GCP_SERVICE_ACCOUNT_KEY" > /tmp/gcp-key.json
+              export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-key.json"
+              gsutil cp "$ENCRYPTED_BACKUP_FILE" "gs://$GCP_STORAGE_BUCKET/redis/$ENCRYPTED_BACKUP_FILE"
+              
+              echo "Uploaded to Google Cloud Storage: gs://$GCP_STORAGE_BUCKET/redis/$ENCRYPTED_BACKUP_FILE"
+              
+              # Upload to Azure Blob Storage (backup)
+              echo "Uploading to Azure Blob Storage..."
+              az storage blob upload \
+                --file "$ENCRYPTED_BACKUP_FILE" \
+                --name "redis/$ENCRYPTED_BACKUP_FILE" \
+                --container-name "$AZURE_STORAGE_CONTAINER" \
+                --account-name "$AZURE_STORAGE_ACCOUNT" \
+                --account-key "$AZURE_STORAGE_KEY"
+              
+              echo "Uploaded to Azure Blob Storage: $AZURE_STORAGE_CONTAINER/redis/$ENCRYPTED_BACKUP_FILE"
+              
+              # Cleanup local files
+              rm "$ENCRYPTED_BACKUP_FILE"
+              rm /tmp/gcp-key.json
+              
+              echo "Redis backup completed successfully"
+            env:
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: redis-host
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: auth-service-config
+                  key: redis-port
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: redis-backup-password
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: backup-encryption-key
+            - name: ENCRYPTION_IV
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: backup-encryption-iv
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-secret-access-key
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-region
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-s3-bucket
+            - name: AWS_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-s3-prefix
+            - name: GCP_SERVICE_ACCOUNT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: gcp-service-account-key
+            - name: GCP_STORAGE_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: gcp-storage-bucket
+            - name: AZURE_STORAGE_ACCOUNT
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: azure-storage-account
+            - name: AZURE_STORAGE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: azure-storage-key
+            - name: AZURE_STORAGE_CONTAINER
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: azure-storage-container
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+          - name: backup-monitoring
+            image: alpine:3.18
+            command: ["/bin/sh", "-c"]
+            args:
+            - |
+              set -e
+              echo "Starting backup monitoring..."
+              
+              export BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+              export MONITORING_FILE="/backups/backup_status_$BACKUP_DATE.json"
+              
+              # Wait for backups to complete
+              sleep 300
+              
+              # Check backup status
+              echo "Checking backup status..."
+              
+              # Check PostgreSQL backup
+              POSTGRES_BACKUP_COUNT=$(aws s3 ls s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/postgres/ --recursive | grep "$BACKUP_DATE" | wc -l)
+              REDIS_BACKUP_COUNT=$(aws s3 ls s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/redis/ --recursive | grep "$BACKUP_DATE" | wc -l)
+              
+              echo "PostgreSQL backup count: $POSTGRES_BACKUP_COUNT"
+              echo "Redis backup count: $REDIS_BACKUP_COUNT"
+              
+              # Create monitoring report
+              cat > "$MONITORING_FILE" << EOF
+              {
+                "backup_date": "$BACKUP_DATE",
+                "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "service": "auth-service",
+                "backups": {
+                  "postgres": {
+                    "count": $POSTGRES_BACKUP_COUNT,
+                    "status": $([ $POSTGRES_BACKUP_COUNT -gt 0 ] && echo "success" || echo "failed")
+                  },
+                  "redis": {
+                    "count": $REDIS_BACKUP_COUNT,
+                    "status": $([ $REDIS_BACKUP_COUNT -gt 0 ] && echo "success" || echo "failed")
+                  }
+                },
+                "overall_status": $([ $POSTGRES_BACKUP_COUNT -gt 0 ] && [ $REDIS_BACKUP_COUNT -gt 0 ] && echo "success" || echo "failed")
+              }
+              EOF
+              
+              echo "Backup monitoring report created: $MONITORING_FILE"
+              
+              # Upload monitoring report
+              aws s3 cp "$MONITORING_FILE" "s3://$AWS_S3_BUCKET/$AWS_S3_PREFIX/monitoring/backup_status_$BACKUP_DATE.json"
+              
+              # Send metrics to Datadog
+              if [ "$DATADOG_API_KEY" != "" ]; then
+                curl -X POST "https://api.datadoghq.com/api/v1/series" \
+                  -H "Content-Type: application/json" \
+                  -H "DD-API-KEY: $DATADOG_API_KEY" \
+                  -d "{
+                    \"series\": [
+                      {
+                        \"metric\": \"academic_system.backup.postgres.count\",
+                        \"points\": [[$(date +%s), $POSTGRES_BACKUP_COUNT]],
+                        \"tags\": [\"service:auth-service\", \"environment:production\"]
+                      },
+                      {
+                        \"metric\": \"academic_system.backup.redis.count\",
+                        \"points\": [[$(date +%s), $REDIS_BACKUP_COUNT]],
+                        \"tags\": [\"service:auth-service\", \"environment:production\"]
+                      },
+                      {
+                        \"metric\": \"academic_system.backup.overall.status\",
+                        \"points\": [[$(date +%s), $([ $POSTGRES_BACKUP_COUNT -gt 0 ] && [ $REDIS_BACKUP_COUNT -gt 0 ] && echo "1" || echo "0")]],
+                        \"tags\": [\"service:auth-service\", \"environment:production\"]
+                      }
+                    ]
+                  }"
+              fi
+              
+              # Send PagerDuty alert if backup failed
+              if [ $POSTGRES_BACKUP_COUNT -eq 0 ] || [ $REDIS_BACKUP_COUNT -eq 0 ]; then
+                echo "Sending PagerDuty alert for backup failure..."
+                curl -X POST "https://events.pagerduty.com/v2/enqueue" \
+                  -H "Content-Type: application/json" \
+                  -H "Authorization: Token token=$PAGERDUTY_INTEGRATION_KEY" \
+                  -d "{
+                    \"routing_key\": \"$PAGERDUTY_INTEGRATION_KEY\",
+                    \"event_action\": \"trigger\",
+                    \"payload\": {
+                      \"summary\": \"Backup failed for auth-service on $BACKUP_DATE\",
+                      \"source\": \"academic-system-backup\",
+                      \"severity\": \"critical\",
+                      \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+                      \"custom_details\": {
+                        \"service\": \"auth-service\",
+                        \"backup_date\": \"$BACKUP_DATE\",
+                        \"postgres_backup_count\": $POSTGRES_BACKUP_COUNT,
+                        \"redis_backup_count\": $REDIS_BACKUP_COUNT
+                      }
+                    }
+                  }"
+              fi
+              
+              echo "Backup monitoring completed"
+            env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-access-key-id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-secret-access-key
+            - name: AWS_DEFAULT_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-region
+            - name: AWS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-s3-bucket
+            - name: AWS_S3_PREFIX
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: aws-s3-prefix
+            - name: DATADOG_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: datadog-api-key
+            - name: PAGERDUTY_INTEGRATION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: disaster-recovery-secrets
+                  key: pagerduty-integration-key
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "50m"
+              limits:
+                memory: "128Mi"
+                cpu: "100m"
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                - ALL
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+          volumes:
+          - name: backup-storage
+            emptyDir: {}
+          nodeSelector:
+            node-type: backup
+            kubernetes.io/arch: amd64
+          tolerations:
+          - key: "backup"
+            operator: "Equal"
+            value: "true"
+            effect: "NoSchedule"
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                preference:
+                  matchExpressions:
+                  - key: node-type
+                    operator: In
+                    values:
+                    - backup
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: disaster-recovery-backup
+  namespace: academic-system
+  labels:
+    app: disaster-recovery-backup
+    component: backup
+    part-of: academic-system
+  annotations:
+    iam.amazonaws.com/role: "arn:aws:iam::123456789012:role/disaster-recovery-backup-role"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: disaster-recovery-backup
+  namespace: academic-system
+  labels:
+    app: disaster-recovery-backup
+    component: backup
+    part-of: academic-system
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["secrets", "configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: disaster-recovery-backup
+  namespace: academic-system
+  labels:
+    app: disaster-recovery-backup
+    component: backup
+    part-of: academic-system
+subjects:
+- kind: ServiceAccount
+  name: disaster-recovery-backup
+  namespace: academic-system
+roleRef:
+  kind: Role
+  name: disaster-recovery-backup
+  apiGroup: rbac.authorization.k8s.io

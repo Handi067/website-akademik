@@ -1,0 +1,769 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: circuit-breaker-config
+  namespace: academic-system
+  labels:
+    app: circuit-breaker-config
+    component: configuration
+    part-of: academic-system
+data:
+  # Circuit Breaker Configuration
+  circuit-breaker.yaml: |
+    # Global Circuit Breaker Settings
+    global:
+      enabled: true
+      default_threshold: 5
+      default_timeout: 30s
+      default_max_requests: 10
+      default_half_open_max_requests: 3
+      default_success_threshold: 3
+      
+    # Service-specific Circuit Breaker Settings
+    services:
+      auth-service:
+        enabled: true
+        threshold: 3
+        timeout: 15s
+        max_requests: 5
+        half_open_max_requests: 2
+        success_threshold: 2
+        failure_rate_threshold: 0.5
+        slow_call_duration_threshold: 5s
+        sliding_window_type: count_based
+        sliding_window_size: 10
+        minimum_number_of_calls: 5
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 30s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      student-service:
+        enabled: true
+        threshold: 5
+        timeout: 30s
+        max_requests: 10
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.6
+        slow_call_duration_threshold: 10s
+        sliding_window_type: time_based
+        sliding_window_size: 60s
+        minimum_number_of_calls: 10
+        permitted_number_of_calls_in_half_open_state: 5
+        wait_duration_in_open_state: 45s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      academic-service:
+        enabled: true
+        threshold: 4
+        timeout: 25s
+        max_requests: 8
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.55
+        slow_call_duration_threshold: 8s
+        sliding_window_type: count_based
+        sliding_window_size: 15
+        minimum_number_of_calls: 8
+        permitted_number_of_calls_in_half_open_state: 4
+        wait_duration_in_open_state: 35s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      finance-service:
+        enabled: true
+        threshold: 3
+        timeout: 20s
+        max_requests: 6
+        half_open_max_requests: 2
+        success_threshold: 2
+        failure_rate_threshold: 0.4
+        slow_call_duration_threshold: 6s
+        sliding_window_type: count_based
+        sliding_window_size: 8
+        minimum_number_of_calls: 5
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 25s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      analytics-service:
+        enabled: true
+        threshold: 6
+        timeout: 60s
+        max_requests: 12
+        half_open_max_requests: 4
+        success_threshold: 4
+        failure_rate_threshold: 0.7
+        slow_call_duration_threshold: 15s
+        sliding_window_type: time_based
+        sliding_window_size: 120s
+        minimum_number_of_calls: 15
+        permitted_number_of_calls_in_half_open_state: 6
+        wait_duration_in_open_state: 60s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      notification-service:
+        enabled: true
+        threshold: 4
+        timeout: 30s
+        max_requests: 8
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.6
+        slow_call_duration_threshold: 8s
+        sliding_window_type: count_based
+        sliding_window_size: 12
+        minimum_number_of_calls: 8
+        permitted_number_of_calls_in_half_open_state: 4
+        wait_duration_in_open_state: 40s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      research-service:
+        enabled: true
+        threshold: 5
+        timeout: 45s
+        max_requests: 10
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.65
+        slow_call_duration_threshold: 12s
+        sliding_window_type: time_based
+        sliding_window_size: 90s
+        minimum_number_of_calls: 12
+        permitted_number_of_calls_in_half_open_state: 5
+        wait_duration_in_open_state: 50s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      alumni-service:
+        enabled: true
+        threshold: 4
+        timeout: 35s
+        max_requests: 8
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.55
+        slow_call_duration_threshold: 10s
+        sliding_window_type: count_based
+        sliding_window_size: 10
+        minimum_number_of_calls: 8
+        permitted_number_of_calls_in_half_open_state: 4
+        wait_duration_in_open_state: 40s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      curriculum-service:
+        enabled: true
+        threshold: 5
+        timeout: 40s
+        max_requests: 10
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.6
+        slow_call_duration_threshold: 12s
+        sliding_window_type: time_based
+        sliding_window_size: 80s
+        minimum_number_of_calls: 10
+        permitted_number_of_calls_in_half_open_state: 5
+        wait_duration_in_open_state: 45s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      audit-service:
+        enabled: true
+        threshold: 3
+        timeout: 25s
+        max_requests: 6
+        half_open_max_requests: 2
+        success_threshold: 2
+        failure_rate_threshold: 0.4
+        slow_call_duration_threshold: 7s
+        sliding_window_type: count_based
+        sliding_window_size: 8
+        minimum_number_of_calls: 5
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 30s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      blockchain-service:
+        enabled: true
+        threshold: 2
+        timeout: 20s
+        max_requests: 4
+        half_open_max_requests: 2
+        success_threshold: 2
+        failure_rate_threshold: 0.3
+        slow_call_duration_threshold: 5s
+        sliding_window_type: count_based
+        sliding_window_size: 6
+        minimum_number_of_calls: 4
+        permitted_number_of_calls_in_half_open_state: 2
+        wait_duration_in_open_state: 20s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      chatbot-service:
+        enabled: true
+        threshold: 4
+        timeout: 30s
+        max_requests: 8
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.6
+        slow_call_duration_threshold: 8s
+        sliding_window_type: count_based
+        sliding_window_size: 12
+        minimum_number_of_calls: 8
+        permitted_number_of_calls_in_half_open_state: 4
+        wait_duration_in_open_state: 40s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      attendance-service:
+        enabled: true
+        threshold: 3
+        timeout: 25s
+        max_requests: 6
+        half_open_max_requests: 2
+        success_threshold: 2
+        failure_rate_threshold: 0.45
+        slow_call_duration_threshold: 6s
+        sliding_window_type: count_based
+        sliding_window_size: 8
+        minimum_number_of_calls: 6
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 30s
+        automatic_transition_from_open_to_half_open_enabled: true
+
+    # External Service Circuit Breaker Settings
+    external_services:
+      database:
+        enabled: true
+        threshold: 5
+        timeout: 10s
+        max_requests: 10
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.5
+        slow_call_duration_threshold: 2s
+        sliding_window_type: count_based
+        sliding_window_size: 10
+        minimum_number_of_calls: 5
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 15s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      redis:
+        enabled: true
+        threshold: 8
+        timeout: 5s
+        max_requests: 15
+        half_open_max_requests: 4
+        success_threshold: 4
+        failure_rate_threshold: 0.6
+        slow_call_duration_threshold: 1s
+        sliding_window_type: count_based
+        sliding_window_size: 15
+        minimum_number_of_calls: 8
+        permitted_number_of_calls_in_half_open_state: 4
+        wait_duration_in_open_state: 10s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      kafka:
+        enabled: true
+        threshold: 6
+        timeout: 15s
+        max_requests: 12
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.5
+        slow_call_duration_threshold: 3s
+        sliding_window_type: count_based
+        sliding_window_size: 12
+        minimum_number_of_calls: 6
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 20s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      elasticsearch:
+        enabled: true
+        threshold: 4
+        timeout: 30s
+        max_requests: 8
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.4
+        slow_call_duration_threshold: 8s
+        sliding_window_type: count_based
+        sliding_window_size: 8
+        minimum_number_of_calls: 4
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 25s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      payment_gateway:
+        enabled: true
+        threshold: 2
+        timeout: 30s
+        max_requests: 4
+        half_open_max_requests: 2
+        success_threshold: 2
+        failure_rate_threshold: 0.3
+        slow_call_duration_threshold: 10s
+        sliding_window_type: count_based
+        sliding_window_size: 6
+        minimum_number_of_calls: 4
+        permitted_number_of_calls_in_half_open_state: 2
+        wait_duration_in_open_state: 60s
+        automatic_transition_from_open_to_half_open_enabled: true
+        
+      email_service:
+        enabled: true
+        threshold: 5
+        timeout: 20s
+        max_requests: 10
+        half_open_max_requests: 3
+        success_threshold: 3
+        failure_rate_threshold: 0.5
+        slow_call_duration_threshold: 5s
+        sliding_window_type: count_based
+        sliding_window_size: 10
+        minimum_number_of_calls: 5
+        permitted_number_of_calls_in_half_open_state: 3
+        wait_duration_in_open_state: 30s
+        automatic_transition_from_open_to_half_open_enabled: true
+
+    # Monitoring and Alerting
+    monitoring:
+      enabled: true
+      metrics_collection_interval: 10s
+      alerting_enabled: true
+      alert_thresholds:
+        failure_rate: 0.5
+        slow_call_rate: 0.3
+        circuit_breaker_open_duration: 60s
+      notification_channels:
+        - slack
+        - email
+        - pagerduty
+        
+    # Logging
+    logging:
+      enabled: true
+      level: info
+      format: json
+      include_stack_trace: true
+      log_circuit_breaker_events: true
+      log_slow_calls: true
+      log_failures: true
+      
+    # Health Check Integration
+    health_check:
+      enabled: true
+      check_interval: 30s
+      timeout: 5s
+      failure_threshold: 3
+      success_threshold: 2
+      
+    # Fallback Configuration
+    fallback:
+      enabled: true
+      default_response:
+        status_code: 503
+        body: '{"error": "Service temporarily unavailable", "message": "Please try again later"}'
+        headers:
+          content-type: application/json
+          retry-after: "30"
+      service_specific_fallbacks:
+        auth-service:
+          status_code: 503
+          body: '{"error": "Authentication service temporarily unavailable", "message": "Please try again later"}'
+        student-service:
+          status_code: 503
+          body: '{"error": "Student service temporarily unavailable", "message": "Please try again later"}'
+        finance-service:
+          status_code: 503
+          body: '{"error": "Payment service temporarily unavailable", "message": "Please try again later"}'
+        analytics-service:
+          status_code: 503
+          body: '{"error": "Analytics service temporarily unavailable", "message": "Please try again later"}'
+        notification-service:
+          status_code: 503
+          body: '{"error": "Notification service temporarily unavailable", "message": "Please try again later"}'
+
+  # Rate Limiting Configuration
+  rate-limiting.yaml: |
+    # Global Rate Limiting Settings
+    global:
+      enabled: true
+      default_requests_per_second: 100
+      default_burst: 200
+      default_window_size: 1m
+      
+    # Service-specific Rate Limiting
+    services:
+      auth-service:
+        enabled: true
+        requests_per_second: 50
+        burst: 100
+        window_size: 1m
+        per_user_limits:
+          login:
+            requests_per_minute: 5
+            burst: 10
+            window_size: 1m
+          register:
+            requests_per_hour: 3
+            burst: 5
+            window_size: 1h
+          password_reset:
+            requests_per_hour: 3
+            burst: 5
+            window_size: 1h
+          token_refresh:
+            requests_per_minute: 10
+            burst: 20
+            window_size: 1m
+            
+      student-service:
+        enabled: true
+        requests_per_second: 100
+        burst: 200
+        window_size: 1m
+        per_user_limits:
+          profile_view:
+            requests_per_minute: 30
+            burst: 60
+            window_size: 1m
+          profile_update:
+            requests_per_minute: 10
+            burst: 20
+            window_size: 1m
+          enrollment:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+            
+      academic-service:
+        enabled: true
+        requests_per_second: 80
+        burst: 160
+        window_size: 1m
+        per_user_limits:
+          course_registration:
+            requests_per_hour: 10
+            burst: 20
+            window_size: 1h
+          grade_view:
+            requests_per_minute: 20
+            burst: 40
+            window_size: 1m
+          transcript_request:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+            
+      finance-service:
+        enabled: true
+        requests_per_second: 30
+        burst: 60
+        window_size: 1m
+        per_user_limits:
+          payment:
+            requests_per_minute: 5
+            burst: 10
+            window_size: 1m
+          invoice_view:
+            requests_per_minute: 20
+            burst: 40
+            window_size: 1m
+          refund_request:
+            requests_per_hour: 3
+            burst: 5
+            window_size: 1h
+            
+      analytics-service:
+        enabled: true
+        requests_per_second: 20
+        burst: 40
+        window_size: 1m
+        per_user_limits:
+          dashboard_view:
+            requests_per_minute: 30
+            burst: 60
+            window_size: 1m
+          report_generation:
+            requests_per_hour: 10
+            burst: 20
+            window_size: 1h
+          data_export:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+            
+      notification-service:
+        enabled: true
+        requests_per_second: 60
+        burst: 120
+        window_size: 1m
+        per_user_limits:
+          email_send:
+            requests_per_minute: 10
+            burst: 20
+            window_size: 1m
+          push_notification:
+            requests_per_minute: 20
+            burst: 40
+            window_size: 1m
+          sms_send:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+            
+      research-service:
+        enabled: true
+        requests_per_second: 40
+        burst: 80
+        window_size: 1m
+        per_user_limits:
+          publication_view:
+            requests_per_minute: 25
+            burst: 50
+            window_size: 1m
+          research_submit:
+            requests_per_hour: 3
+            burst: 5
+            window_size: 1h
+          grant_application:
+            requests_per_hour: 2
+            burst: 3
+            window_size: 1h
+            
+      alumni-service:
+        enabled: true
+        requests_per_second: 50
+        burst: 100
+        window_size: 1m
+        per_user_limits:
+          profile_view:
+            requests_per_minute: 20
+            burst: 40
+            window_size: 1m
+          job_application:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+          networking_request:
+            requests_per_hour: 10
+            burst: 20
+            window_size: 1h
+            
+      curriculum-service:
+        enabled: true
+        requests_per_second: 60
+        burst: 120
+        window_size: 1m
+        per_user_limits:
+          course_view:
+            requests_per_minute: 30
+            burst: 60
+            window_size: 1m
+          curriculum_update:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+          outcome_assessment:
+            requests_per_hour: 3
+            burst: 5
+            window_size: 1h
+            
+      audit-service:
+        enabled: true
+        requests_per_second: 100
+        burst: 200
+        window_size: 1m
+        per_user_limits:
+          log_view:
+            requests_per_minute: 50
+            burst: 100
+            window_size: 1m
+          audit_report:
+            requests_per_hour: 10
+            burst: 20
+            window_size: 1h
+          compliance_check:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+            
+      blockchain-service:
+        enabled: true
+        requests_per_second: 20
+        burst: 40
+        window_size: 1m
+        per_user_limits:
+          certificate_verify:
+            requests_per_minute: 15
+            burst: 30
+            window_size: 1m
+          certificate_issue:
+            requests_per_hour: 3
+            burst: 5
+            window_size: 1h
+          blockchain_query:
+            requests_per_minute: 25
+            burst: 50
+            window_size: 1m
+            
+      chatbot-service:
+        enabled: true
+        requests_per_second: 40
+        burst: 80
+        window_size: 1m
+        per_user_limits:
+          conversation:
+            requests_per_minute: 20
+            burst: 40
+            window_size: 1m
+          file_upload:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+          voice_query:
+            requests_per_minute: 10
+            burst: 20
+            window_size: 1m
+            
+      attendance-service:
+        enabled: true
+        requests_per_second: 80
+        burst: 160
+        window_size: 1m
+        per_user_limits:
+          attendance_mark:
+            requests_per_minute: 10
+            burst: 20
+            window_size: 1m
+          attendance_view:
+            requests_per_minute: 30
+            burst: 60
+            window_size: 1m
+          report_generation:
+            requests_per_hour: 5
+            burst: 10
+            window_size: 1h
+
+    # IP-based Rate Limiting
+    ip_based_limits:
+      enabled: true
+      default_requests_per_second: 200
+      default_burst: 400
+      default_window_size: 1m
+      trusted_ips:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+      blocked_ips:
+        - 192.168.1.100
+        - 10.0.0.50
+      ip_whitelist:
+        - 203.0.113.0/24  # Office network
+        - 198.51.100.0/24  # Partner network
+
+    # Geographic Rate Limiting
+    geo_limits:
+      enabled: true
+      default_requests_per_second: 50
+      default_burst: 100
+      default_window_size: 1m
+      country_specific_limits:
+        US:
+          requests_per_second: 100
+          burst: 200
+          window_size: 1m
+        ID:
+          requests_per_second: 80
+          burst: 160
+          window_size: 1m
+        SG:
+          requests_per_second: 90
+          burst: 180
+          window_size: 1m
+      blocked_countries:
+        - XX  # Example blocked country
+        - YY  # Example blocked country
+
+    # Time-based Rate Limiting
+    time_based_limits:
+      enabled: true
+      peak_hours:
+        start: "09:00"
+        end: "17:00"
+        timezone: "UTC"
+        multiplier: 1.5
+      off_peak_hours:
+        start: "17:01"
+        end: "08:59"
+        timezone: "UTC"
+        multiplier: 0.8
+      weekend_limits:
+        multiplier: 0.7
+      holiday_limits:
+        multiplier: 0.5
+
+    # Adaptive Rate Limiting
+    adaptive_limits:
+      enabled: true
+      base_requests_per_second: 100
+      max_requests_per_second: 500
+      min_requests_per_second: 10
+      adjustment_factor: 0.1
+      response_time_threshold: 500ms
+      error_rate_threshold: 0.05
+      adjustment_interval: 60s
+
+    # Rate Limiting Headers
+    response_headers:
+      enabled: true
+      headers:
+        x-rate-limit-limit: "true"
+        x-rate-limit-remaining: "true"
+        x-rate-limit-reset: "true"
+        x-rate-limit-retry-after: "true"
+        x-rate-limit-policy: "true"
+
+    # Monitoring and Alerting
+    monitoring:
+      enabled: true
+      metrics_collection_interval: 10s
+      alerting_enabled: true
+      alert_thresholds:
+        rate_limit_hits: 0.8
+        rate_limit_exceeds: 0.1
+        response_time_increase: 2.0
+      notification_channels:
+        - slack
+        - email
+        - pagerduty
+
+    # Logging
+    logging:
+      enabled: true
+      level: info
+      format: json
+      log_rate_limit_events: true
+      log_rate_limit_exceeds: true
+      log_adaptive_adjustments: true
+      include_user_id: true
+      include_ip_address: true
+      include_user_agent: true
+
+    # Fallback Behavior
+    fallback:
+      enabled: true
+      when_rate_limit_exceeded:
+        status_code: 429
+        body: '{"error": "Rate limit exceeded", "message": "Please try again later"}'
+        headers:
+          content-type: application/json
+          retry-after: "60"
+      when_service_unavailable:
+        status_code: 503
+        body: '{"error": "Service temporarily unavailable", "message": "Please try again later"}'
+        headers:
+          content-type: application/json
+          retry-after: "30"

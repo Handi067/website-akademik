@@ -1,0 +1,551 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: academic-system-gateway
+  namespace: istio-system
+  labels:
+    app: academic-system-gateway
+    component: gateway
+    part-of: academic-system
+    istio: ingressgateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - academic-system.com
+    - api.academic-system.com
+    - auth.academic-system.com
+    - student.academic-system.com
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: academic-system-tls
+    hosts:
+    - academic-system.com
+    - api.academic-system.com
+    - auth.academic-system.com
+    - student.academic-system.com
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: academic-system-vs
+  namespace: academic-system
+  labels:
+    app: academic-system-vs
+    component: routing
+    part-of: academic-system
+spec:
+  hosts:
+  - academic-system.com
+  - api.academic-system.com
+  - auth.academic-system.com
+  - student.academic-system.com
+  gateways:
+  - istio-system/academic-system-gateway
+  http:
+  # Circuit Breaker and Rate Limiting for Auth Service
+  - match:
+    - uri:
+        prefix: /auth
+    - uri:
+        prefix: /api/v1/auth
+    route:
+    - destination:
+        host: auth-service
+        port:
+          number: 8001
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5s
+      abort:
+        percentage:
+          value: 0.01
+        httpStatus: 503
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: 5xx,gateway-error,connect-failure,refused-stream
+    corsPolicy:
+      allowOrigins:
+      - exact: https://academic-system.com
+      - exact: https://api.academic-system.com
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Origin
+      - Content-Type
+      - Authorization
+      - X-Request-ID
+      - X-Forwarded-For
+      - X-Real-IP
+      allowCredentials: true
+      maxAge: "24h"
+    # Rate limiting using Envoy's rate limit service
+    envoy:
+      ext_authz:
+        http_service:
+          authorization:
+            authorization_request:
+              allowed_headers:
+              patterns:
+              - exact: Authorization
+              - exact: X-Request-ID
+              - exact: X-Forwarded-For
+              - exact: X-Real-IP
+          timeout: 1s
+          failure_mode_allow: false
+      # Rate limiting configuration
+      rateLimit:
+        requests_per_unit: 100
+        unit: MINUTE
+      # Circuit breaker configuration
+      circuitBreaker:
+        consecutiveErrors: 5
+        interval: 30000ms
+        baseEjectionTime: 30000ms
+        maxEjectionPercent: 50
+        minHealthPercent: 50
+  # Student Service with Load Balancing
+  - match:
+    - uri:
+        prefix: /student
+    - uri:
+        prefix: /api/v1/student
+    route:
+    - destination:
+        host: student-service
+        port:
+          number: 8002
+        subset: v1
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: 5xx,gateway-error,connect-failure,refused-stream
+    corsPolicy:
+      allowOrigins:
+      - exact: https://academic-system.com
+      - exact: https://api.academic-system.com
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Origin
+      - Content-Type
+      - Authorization
+      - X-Request-ID
+      allowCredentials: true
+      maxAge: "24h"
+    # Load balancing strategy
+    envoy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+      # Health check configuration
+      health_check:
+        healthy_threshold: 2
+        interval: 10s
+        timeout: 5s
+        unhealthy_threshold: 3
+        http_health_check:
+          path: /health
+          expected_statuses:
+          - 200
+  # Analytics Service with Request Routing
+  - match:
+    - uri:
+        prefix: /analytics
+    - uri:
+        prefix: /api/v1/analytics
+    route:
+    - destination:
+        host: analytics-service
+        port:
+          number: 8008
+        subset: v1
+    timeout: 60s
+    retries:
+      attempts: 2
+      perTryTimeout: 30s
+      retryOn: 5xx,gateway-error,connect-failure,refused-stream
+    corsPolicy:
+      allowOrigins:
+      - exact: https://academic-system.com
+      - exact: https://api.academic-system.com
+      allowMethods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+      allowHeaders:
+      - Origin
+      - Content-Type
+      - Authorization
+      - X-Request-ID
+      allowCredentials: true
+      maxAge: "24h"
+    # Request timeout for analytics operations
+    timeout: 60s
+    # Mirror traffic for testing
+    mirror:
+      host: analytics-service
+      port:
+        number: 8008
+      subset: test
+    # Request/response transformation
+    envoy:
+      # Request transformation
+      requestTransformation:
+        transformationTemplate:
+          headers:
+            x-request-id:
+              text: "{{%uuid()}}"
+            x-forwarded-for:
+              text: "%REQ(X-FORWARDED-FOR)%"
+      # Response transformation
+      responseTransformation:
+        transformationTemplate:
+          headers:
+            x-response-time:
+              text: "{{%upstream_response_time()}}"
+            x-request-id:
+              text: "%REQ(X-REQUEST-ID)%"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: auth-service-destination
+  namespace: academic-system
+  labels:
+    app: auth-service-destination
+    component: destination
+    part-of: academic-system
+spec:
+  host: auth-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        idleTimeout: 300s
+        h2UpgradePolicy: UPGRADE
+    loadBalancer:
+      simple: ROUND_ROBIN
+      localityLbSetting:
+        enabled: true
+        failoverPriority:
+        - region: us-west-2
+        - region: us-east-1
+        - region: eu-west-1
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      interval: 30000ms
+      baseEjectionTime: 30000ms
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      consecutive5xxErrors: 5
+    tls:
+      mode: ISTIO_MUTUAL
+      sni: auth-service
+    portLevelSettings:
+    - port:
+        number: 8001
+      loadBalancer:
+        simple: LEAST_CONN
+      connectionPool:
+        tcp:
+          maxConnections: 50
+        http:
+          http1MaxPendingRequests: 25
+          http2MaxRequests: 50
+          maxRequestsPerConnection: 5
+      outlierDetection:
+        consecutiveGatewayErrors: 3
+        interval: 15000ms
+        baseEjectionTime: 15000ms
+        maxEjectionPercent: 30
+        minHealthPercent: 70
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+  - name: v2
+    labels:
+      version: v2
+    trafficPolicy:
+      loadBalancer:
+        simple: RANDOM
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: student-service-destination
+  namespace: academic-system
+  labels:
+    app: student-service-destination
+    component: destination
+    part-of: academic-system
+spec:
+  host: student-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 200
+        connectTimeout: 30s
+      http:
+        http1MaxPendingRequests: 100
+        http2MaxRequests: 200
+        maxRequestsPerConnection: 20
+        maxRetries: 3
+        idleTimeout: 300s
+        h2UpgradePolicy: UPGRADE
+    loadBalancer:
+      simple: LEAST_CONN
+      localityLbSetting:
+        enabled: true
+        failoverPriority:
+        - region: us-west-2
+        - region: us-east-1
+        - region: eu-west-1
+    outlierDetection:
+      consecutiveGatewayErrors: 5
+      interval: 30000ms
+      baseEjectionTime: 30000ms
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+      consecutive5xxErrors: 5
+    tls:
+      mode: ISTIO_MUTUAL
+      sni: student-service
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+    trafficPolicy:
+      loadBalancer:
+        simple: LEAST_CONN
+  - name: v2
+    labels:
+      version: v2
+    trafficPolicy:
+      loadBalancer:
+        simple: RANDOM
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: analytics-service-destination
+  namespace: academic-system
+  labels:
+    app: analytics-service-destination
+    component: destination
+    part-of: academic-system
+spec:
+  host: analytics-service
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 150
+        connectTimeout: 60s
+      http:
+        http1MaxPendingRequests: 75
+        http2MaxRequests: 150
+        maxRequestsPerConnection: 15
+        maxRetries: 2
+        idleTimeout: 600s
+        h2UpgradePolicy: UPGRADE
+    loadBalancer:
+      simple: ROUND_ROBIN
+      localityLbSetting:
+        enabled: true
+        failoverPriority:
+        - region: us-west-2
+        - region: us-east-1
+        - region: eu-west-1
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      interval: 45000ms
+      baseEjectionTime: 45000ms
+      maxEjectionPercent: 40
+      minHealthPercent: 60
+      consecutive5xxErrors: 3
+    tls:
+      mode: ISTIO_MUTUAL
+      sni: analytics-service
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+  - name: test
+    labels:
+      version: test
+    trafficPolicy:
+      loadBalancer:
+        simple: RANDOM
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-database
+  namespace: academic-system
+  labels:
+    app: external-database
+    component: service-entry
+    part-of: academic-system
+spec:
+  hosts:
+  - external-postgres.academic-system.com
+  - external-redis.academic-system.com
+  - external-kafka.academic-system.com
+  location: MESH_EXTERNAL
+  ports:
+  - number: 5432
+    name: postgres
+    protocol: TCP
+  - number: 6379
+    name: redis
+    protocol: TCP
+  - number: 9092
+    name: kafka
+    protocol: TCP
+  resolution: DNS
+---
+apiVersion: networking.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: auth-service-authz
+  namespace: academic-system
+  labels:
+    app: auth-service-authz
+    component: authorization
+    part-of: academic-system
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"]
+  - from:
+    - source:
+        namespaces: ["academic-system"]
+  - to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  when:
+  - key: request.headers[authorization]
+    values: ["Bearer *"]
+  - key: request.headers[x-request-id]
+    values: ["*"]
+---
+apiVersion: networking.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: deny-unauthenticated
+  namespace: academic-system
+  labels:
+    app: deny-unauthenticated
+    component: authorization
+    part-of: academic-system
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  action: DENY
+  rules:
+  - from:
+    - source:
+        notRequestPrincipals: ["*"]
+  to:
+    - operation:
+        notPaths: ["/health", "/ready", "/metrics", "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/validate"]
+---
+apiVersion: networking.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: auth-service-request-auth
+  namespace: academic-system
+  labels:
+    app: auth-service-request-auth
+    component: authentication
+    part-of: academic-system
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  jwtRules:
+  - issuer: "https://academic-system.com"
+    forwardOriginalToken: true
+    from:
+    - uri: https://academic-system.com/oauth2/token
+    outputClaimToHeaders:
+    - header: "x-jwt-claim-email"
+      claim: "email"
+    - header: "x-jwt-claim-sub"
+      claim: "sub"
+    - header: "x-jwt-claim-role"
+      claim: "role"
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: academic-system
+  labels:
+    app: default-peer-auth
+    component: security
+    part-of: academic-system
+spec:
+  mtls:
+    mode: STRICT
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: allow-all
+  namespace: academic-system
+  labels:
+    app: allow-all
+    component: authorization
+    part-of: academic-system
+spec:
+  selector:
+    matchLabels:
+      app: auth-service
+  action: ALLOW
+  rules:
+  - {}

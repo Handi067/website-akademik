@@ -1,0 +1,9 @@
+node_modules
+
+# Secrets & build output
+.env
+**/.env
+!**/.env.example
+dist/
+logs/
+*.log

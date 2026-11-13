@@ -1,0 +1,704 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: academic-system-alerts
+  namespace: monitoring
+  labels:
+    app: academic-system
+    component: monitoring
+    part-of: academic-system
+spec:
+  groups:
+  - name: academic-system.rules
+    rules:
+    # Service Health Alerts
+    - alert: ServiceDown
+      expr: up{job=~"auth-service|student-service|academic-service|finance-service|analytics-service|notification-service|audit-service|blockchain-service|chatbot-service|attendance-service"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: "{{ $labels.job }}"
+        component: "{{ $labels.component }}"
+      annotations:
+        summary: "Service {{ $labels.job }} is down"
+        description: "Service {{ $labels.job }} has been down for more than 1 minute."
+        runbook_url: "https://docs.academic-system.com/runbooks/service-down"
+        dashboard_url: "https://grafana.academic-system.com/d/academic-system-overview"
+    
+    - alert: HighErrorRate
+      expr: rate(http_requests_total{job=~"auth-service|student-service|academic-service|finance-service|analytics-service|notification-service|audit-service|blockchain-service|chatbot-service|attendance-service",status=~"5.."}[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        service: "{{ $labels.job }}"
+        component: "{{ $labels.component }}"
+      annotations:
+        summary: "High error rate for {{ $labels.job }}"
+        description: "Error rate for {{ $labels.job }} is {{ $value | humanizePercentage }} for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-error-rate"
+        dashboard_url: "https://grafana.academic-system.com/d/academic-system-overview"
+    
+    - alert: HighLatency
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=~"auth-service|student-service|academic-service|finance-service|analytics-service|notification-service|audit-service|blockchain-service|chatbot-service|attendance-service"}[5m])) > 1
+      for: 5m
+      labels:
+        severity: warning
+        service: "{{ $labels.job }}"
+        component: "{{ $labels.component }}"
+      annotations:
+        summary: "High latency for {{ $labels.job }}"
+        description: "95th percentile latency for {{ $labels.job }} is {{ $value }}s for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-latency"
+        dashboard_url: "https://grafana.academic-system.com/d/academic-system-overview"
+    
+    # Resource Usage Alerts
+    - alert: HighCPUUsage
+      expr: rate(container_cpu_usage_seconds_total{namespace="academic-system"}[5m]) * 100 > 80
+      for: 10m
+      labels:
+        severity: warning
+        namespace: academic-system
+        component: "{{ $labels.pod }}"
+      annotations:
+        summary: "High CPU usage for {{ $labels.pod }}"
+        description: "CPU usage for {{ $labels.pod }} is {{ $value }}% for the last 10 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-cpu-usage"
+        dashboard_url: "https://grafana.academic-system.com/d/resource-usage"
+    
+    - alert: HighMemoryUsage
+      expr: (container_memory_usage_bytes{namespace="academic-system"} / container_spec_memory_limit_bytes{namespace="academic-system"}) * 100 > 90
+      for: 10m
+      labels:
+        severity: warning
+        namespace: academic-system
+        component: "{{ $labels.pod }}"
+      annotations:
+        summary: "High memory usage for {{ $labels.pod }}"
+        description: "Memory usage for {{ $labels.pod }} is {{ $value }}% for the last 10 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-memory-usage"
+        dashboard_url: "https://grafana.academic-system.com/d/resource-usage"
+    
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{namespace="academic-system"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+        namespace: academic-system
+        component: "{{ $labels.pod }}"
+      annotations:
+        summary: "Pod {{ $labels.pod }} is crash looping"
+        description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/pod-crash-looping"
+        dashboard_url: "https://grafana.academic-system.com/d/pod-health"
+    
+    # Database Alerts
+    - alert: DatabaseDown
+      expr: up{job="postgres"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: postgres
+        component: database
+      annotations:
+        summary: "PostgreSQL database is down"
+        description: "PostgreSQL database has been down for more than 1 minute."
+        runbook_url: "https://docs.academic-system.com/runbooks/database-down"
+        dashboard_url: "https://grafana.academic-system.com/d/database-overview"
+    
+    - alert: DatabaseHighConnections
+      expr: pg_stat_database_numbackends{datname="auth_db"} > 80
+      for: 5m
+      labels:
+        severity: warning
+        service: postgres
+        component: database
+      annotations:
+        summary: "High database connections"
+        description: "Database {{ $labels.datname }} has {{ $value }} active connections."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-db-connections"
+        dashboard_url: "https://grafana.academic-system.com/d/database-overview"
+    
+    - alert: DatabaseSlowQueries
+      expr: rate(pg_stat_statements_mean_time_seconds{datname="auth_db"}[5m]) > 1
+      for: 5m
+      labels:
+        severity: warning
+        service: postgres
+        component: database
+      annotations:
+        summary: "Slow database queries"
+        description: "Average query time for {{ $labels.datname }} is {{ $value }}s."
+        runbook_url: "https://docs.academic-system.com/runbooks/slow-queries"
+        dashboard_url: "https://grafana.academic-system.com/d/database-overview"
+    
+    # Redis Alerts
+    - alert: RedisDown
+      expr: up{job="redis"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: redis
+        component: cache
+      annotations:
+        summary: "Redis cache is down"
+        description: "Redis cache has been down for more than 1 minute."
+        runbook_url: "https://docs.academic-system.com/runbooks/redis-down"
+        dashboard_url: "https://grafana.academic-system.com/d/cache-overview"
+    
+    - alert: RedisHighMemoryUsage
+      expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 90
+      for: 5m
+      labels:
+        severity: warning
+        service: redis
+        component: cache
+      annotations:
+        summary: "Redis high memory usage"
+        description: "Redis memory usage is {{ $value }}%."
+        runbook_url: "https://docs.academic-system.com/runbooks/redis-high-memory"
+        dashboard_url: "https://grafana.academic-system.com/d/cache-overview"
+    
+    - alert: RedisHighConnectionCount
+      expr: redis_connected_clients > 100
+      for: 5m
+      labels:
+        severity: warning
+        service: redis
+        component: cache
+      annotations:
+        summary: "Redis high connection count"
+        description: "Redis has {{ $value }} connected clients."
+        runbook_url: "https://docs.academic-system.com/runbooks/redis-high-connections"
+        dashboard_url: "https://grafana.academic-system.com/d/cache-overview"
+    
+    # Kafka Alerts
+    - alert: KafkaDown
+      expr: up{job="kafka"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        service: kafka
+        component: messaging
+      annotations:
+        summary: "Kafka broker is down"
+        description: "Kafka broker has been down for more than 1 minute."
+        runbook_url: "https://docs.academic-system.com/runbooks/kafka-down"
+        dashboard_url: "https://grafana.academic-system.com/d/messaging-overview"
+    
+    - alert: KafkaHighLag
+      expr: kafka_consumer_lag_sum > 1000
+      for: 5m
+      labels:
+        severity: warning
+        service: kafka
+        component: messaging
+      annotations:
+        summary: "High Kafka consumer lag"
+        description: "Kafka consumer lag is {{ $value }} messages."
+        runbook_url: "https://docs.academic-system.com/runbooks/kafka-high-lag"
+        dashboard_url: "https://grafana.academic-system.com/d/messaging-overview"
+    
+    - alert: KafkaUnderReplicatedPartitions
+      expr: kafka_server_kafkacontrollerstatevalue{state!="Leader"} > 0
+      for: 5m
+      labels:
+        severity: warning
+        service: kafka
+        component: messaging
+      annotations:
+        summary: "Kafka under-replicated partitions"
+        description: "Kafka has {{ $value }} under-replicated partitions."
+        runbook_url: "https://docs.academic-system.com/runbooks/kafka-under-replicated"
+        dashboard_url: "https://grafana.academic-system.com/d/messaging-overview"
+    
+    # Authentication Service Specific Alerts
+    - alert: AuthServiceHighLoginFailures
+      expr: rate(auth_service_login_failures_total[5m]) > 10
+      for: 5m
+      labels:
+        severity: warning
+        service: auth-service
+        component: authentication
+      annotations:
+        summary: "High login failures in auth service"
+        description: "Auth service has {{ $value }} login failures per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/auth-login-failures"
+        dashboard_url: "https://grafana.academic-system.com/d/auth-service"
+    
+    - alert: AuthServiceHighTokenGeneration
+      expr: rate(auth_service_token_generation_total[5m]) > 100
+      for: 5m
+      labels:
+        severity: warning
+        service: auth-service
+        component: authentication
+      annotations:
+        summary: "High token generation in auth service"
+        description: "Auth service is generating {{ $value }} tokens per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/auth-high-token-gen"
+        dashboard_url: "https://grafana.academic-system.com/d/auth-service"
+    
+    - alert: AuthServiceLowCacheHitRate
+      expr: rate(auth_service_cache_hits_total[5m]) / (rate(auth_service_cache_hits_total[5m]) + rate(auth_service_cache_misses_total[5m])) < 0.8
+      for: 10m
+      labels:
+        severity: warning
+        service: auth-service
+        component: authentication
+      annotations:
+        summary: "Low cache hit rate in auth service"
+        description: "Auth service cache hit rate is {{ $value | humanizePercentage }} for the last 10 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/auth-low-cache-hit"
+        dashboard_url: "https://grafana.academic-system.com/d/auth-service"
+    
+    # Student Service Specific Alerts
+    - alert: StudentServiceHighEnrollmentRate
+      expr: rate(student_service_enrollments_total[5m]) > 50
+      for: 5m
+      labels:
+        severity: warning
+        service: student-service
+        component: student-management
+      annotations:
+        summary: "High enrollment rate in student service"
+        description: "Student service has {{ $value }} enrollments per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/student-high-enrollment"
+        dashboard_url: "https://grafana.academic-system.com/d/student-service"
+    
+    - alert: StudentServiceLowProfileUpdateRate
+      expr: rate(student_service_profile_updates_total[5m]) < 0.1
+      for: 15m
+      labels:
+        severity: info
+        service: student-service
+        component: student-management
+      annotations:
+        summary: "Low profile update rate in student service"
+        description: "Student service profile update rate is {{ $value }} per second for the last 15 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/student-low-profile-updates"
+        dashboard_url: "https://grafana.academic-system.com/d/student-service"
+    
+    # Academic Service Specific Alerts
+    - alert: AcademicServiceHighCourseRegistrationRate
+      expr: rate(academic_service_course_registrations_total[5m]) > 30
+      for: 5m
+      labels:
+        severity: warning
+        service: academic-service
+        component: academic-records
+      annotations:
+        summary: "High course registration rate in academic service"
+        description: "Academic service has {{ $value }} course registrations per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/academic-high-registration"
+        dashboard_url: "https://grafana.academic-system.com/d/academic-service"
+    
+    - alert: AcademicServiceLowGradeSubmissionRate
+      expr: rate(academic_service_grade_submissions_total[5m]) < 0.05
+      for: 30m
+      labels:
+        severity: info
+        service: academic-service
+        component: academic-records
+      annotations:
+        summary: "Low grade submission rate in academic service"
+        description: "Academic service grade submission rate is {{ $value }} per second for the last 30 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/academic-low-grade-submissions"
+        dashboard_url: "https://grafana.academic-system.com/d/academic-service"
+    
+    # Finance Service Specific Alerts
+    - alert: FinanceServiceHighPaymentRate
+      expr: rate(finance_service_payments_total[5m]) > 20
+      for: 5m
+      labels:
+        severity: warning
+        service: finance-service
+        component: finance
+      annotations:
+        summary: "High payment rate in finance service"
+        description: "Finance service has {{ $value }} payments per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/finance-high-payments"
+        dashboard_url: "https://grafana.academic-system.com/d/finance-service"
+    
+    - alert: FinanceServiceHighPaymentFailures
+      expr: rate(finance_service_payment_failures_total[5m]) > 2
+      for: 5m
+      labels:
+        severity: warning
+        service: finance-service
+        component: finance
+      annotations:
+        summary: "High payment failures in finance service"
+        description: "Finance service has {{ $value }} payment failures per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/finance-payment-failures"
+        dashboard_url: "https://grafana.academic-system.com/d/finance-service"
+    
+    # Analytics Service Specific Alerts
+    - alert: AnalyticsServiceHighPredictionRate
+      expr: rate(analytics_service_predictions_total[5m]) > 100
+      for: 5m
+      labels:
+        severity: warning
+        service: analytics-service
+        component: analytics
+      annotations:
+        summary: "High prediction rate in analytics service"
+        description: "Analytics service has {{ $value }} predictions per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/analytics-high-predictions"
+        dashboard_url: "https://grafana.academic-system.com/d/analytics-service"
+    
+    - alert: AnalyticsServiceLowModelAccuracy
+      expr: analytics_service_model_accuracy < 0.8
+      for: 10m
+      labels:
+        severity: warning
+        service: analytics-service
+        component: analytics
+      annotations:
+        summary: "Low model accuracy in analytics service"
+        description: "Analytics service model accuracy is {{ $value | humanizePercentage }} for the last 10 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/analytics-low-accuracy"
+        dashboard_url: "https://grafana.academic-system.com/d/analytics-service"
+    
+    # Notification Service Specific Alerts
+    - alert: NotificationServiceHighNotificationRate
+      expr: rate(notification_service_notifications_total[5m]) > 50
+      for: 5m
+      labels:
+        severity: warning
+        service: notification-service
+        component: notification
+      annotations:
+        summary: "High notification rate in notification service"
+        description: "Notification service has {{ $value }} notifications per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/notification-high-rate"
+        dashboard_url: "https://grafana.academic-system.com/d/notification-service"
+    
+    - alert: NotificationServiceHighFailureRate
+      expr: rate(notification_service_failures_total[5m]) / rate(notification_service_notifications_total[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        service: notification-service
+        component: notification
+      annotations:
+        summary: "High failure rate in notification service"
+        description: "Notification service failure rate is {{ $value | humanizePercentage }} for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/notification-high-failures"
+        dashboard_url: "https://grafana.academic-system.com/d/notification-service"
+    
+    # Audit Service Specific Alerts
+    - alert: AuditServiceHighLogRate
+      expr: rate(audit_service_logs_total[5m]) > 1000
+      for: 5m
+      labels:
+        severity: warning
+        service: audit-service
+        component: audit
+      annotations:
+        summary: "High log rate in audit service"
+        description: "Audit service has {{ $value }} logs per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/audit-high-log-rate"
+        dashboard_url: "https://grafana.academic-system.com/d/audit-service"
+    
+    - alert: AuditServiceLowLogRetention
+      expr: audit_service_log_retention_days < 30
+      for: 1h
+      labels:
+        severity: warning
+        service: audit-service
+        component: audit
+      annotations:
+        summary: "Low log retention in audit service"
+        description: "Audit service log retention is {{ $value }} days."
+        runbook_url: "https://docs.academic-system.com/runbooks/audit-low-retention"
+        dashboard_url: "https://grafana.academic-system.com/d/audit-service"
+    
+    # Blockchain Service Specific Alerts
+    - alert: BlockchainServiceHighVerificationRate
+      expr: rate(blockchain_service_verifications_total[5m]) > 20
+      for: 5m
+      labels:
+        severity: warning
+        service: blockchain-service
+        component: blockchain
+      annotations:
+        summary: "High verification rate in blockchain service"
+        description: "Blockchain service has {{ $value }} verifications per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/blockchain-high-verification"
+        dashboard_url: "https://grafana.academic-system.com/d/blockchain-service"
+    
+    - alert: BlockchainServiceLowConsensusRate
+      expr: blockchain_service_consensus_rate < 0.9
+      for: 5m
+      labels:
+        severity: warning
+        service: blockchain-service
+        component: blockchain
+      annotations:
+        summary: "Low consensus rate in blockchain service"
+        description: "Blockchain service consensus rate is {{ $value | humanizePercentage }} for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/blockchain-low-consensus"
+        dashboard_url: "https://grafana.academic-system.com/d/blockchain-service"
+    
+    # Chatbot Service Specific Alerts
+    - alert: ChatbotServiceHighQueryRate
+      expr: rate(chatbot_service_queries_total[5m]) > 30
+      for: 5m
+      labels:
+        severity: warning
+        service: chatbot-service
+        component: chatbot
+      annotations:
+        summary: "High query rate in chatbot service"
+        description: "Chatbot service has {{ $value }} queries per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/chatbot-high-queries"
+        dashboard_url: "https://grafana.academic-system.com/d/chatbot-service"
+    
+    - alert: ChatbotServiceLowIntentRecognition
+      expr: chatbot_service_intent_recognition_rate < 0.8
+      for: 10m
+      labels:
+        severity: warning
+        service: chatbot-service
+        component: chatbot
+      annotations:
+        summary: "Low intent recognition in chatbot service"
+        description: "Chatbot service intent recognition rate is {{ $value | humanizePercentage }} for the last 10 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/chatbot-low-intent"
+        dashboard_url: "https://grafana.academic-system.com/d/chatbot-service"
+    
+    # Attendance Service Specific Alerts
+    - alert: AttendanceServiceHighCheckInRate
+      expr: rate(attendance_service_check_ins_total[5m]) > 50
+      for: 5m
+      labels:
+        severity: warning
+        service: attendance-service
+        component: attendance
+      annotations:
+        summary: "High check-in rate in attendance service"
+        description: "Attendance service has {{ $value }} check-ins per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/attendance-high-checkin"
+        dashboard_url: "https://grafana.academic-system.com/d/attendance-service"
+    
+    - alert: AttendanceServiceHighAnomalyRate
+      expr: rate(attendance_service_anomalies_total[5m]) > 5
+      for: 5m
+      labels:
+        severity: warning
+        service: attendance-service
+        component: attendance
+      annotations:
+        summary: "High anomaly rate in attendance service"
+        description: "Attendance service has {{ $value }} anomalies per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/attendance-high-anomalies"
+        dashboard_url: "https://grafana.academic-system.com/d/attendance-service"
+    
+    # Infrastructure Alerts
+    - alert: KubernetesNodeNotReady
+      expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+      for: 5m
+      labels:
+        severity: critical
+        component: kubernetes
+      annotations:
+        summary: "Kubernetes node {{ $labels.node }} is not ready"
+        description: "Kubernetes node {{ $labels.node }} has been not ready for more than 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/node-not-ready"
+        dashboard_url: "https://grafana.academic-system.com/d/kubernetes-overview"
+    
+    - alert: KubernetesPodPending
+      expr: kube_pod_status_phase{phase="Pending"} > 0
+      for: 10m
+      labels:
+        severity: warning
+        component: kubernetes
+      annotations:
+        summary: "Kubernetes pod {{ $labels.pod }} is pending"
+        description: "Kubernetes pod {{ $labels.pod }} has been pending for more than 10 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/pod-pending"
+        dashboard_url: "https://grafana.academic-system.com/d/kubernetes-overview"
+    
+    - alert: KubernetesPodFailed
+      expr: kube_pod_status_phase{phase="Failed"} > 0
+      for: 5m
+      labels:
+        severity: critical
+        component: kubernetes
+      annotations:
+        summary: "Kubernetes pod {{ $labels.pod }} failed"
+        description: "Kubernetes pod {{ $labels.pod }} has failed."
+        runbook_url: "https://docs.academic-system.com/runbooks/pod-failed"
+        dashboard_url: "https://grafana.academic-system.com/d/kubernetes-overview"
+    
+    - alert: PersistentVolumeClaimLowSpace
+      expr: (kubelet_volume_stats_capacity_bytes - kubelet_volume_stats_available_bytes) / kubelet_volume_stats_capacity_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        component: kubernetes
+      annotations:
+        summary: "Persistent volume claim {{ $labels.persistentvolumeclaim }} is low on space"
+        description: "Persistent volume claim {{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full."
+        runbook_url: "https://docs.academic-system.com/runbooks/pvc-low-space"
+        dashboard_url: "https://grafana.academic-system.com/d/storage-overview"
+    
+    # Network Alerts
+    - alert: HighNetworkLatency
+      expr: probe_duration_seconds{job="blackbox"} > 1
+      for: 5m
+      labels:
+        severity: warning
+        component: network
+      annotations:
+        summary: "High network latency to {{ $labels.instance }}"
+        description: "Network latency to {{ $labels.instance }} is {{ $value }}s for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-latency"
+        dashboard_url: "https://grafana.academic-system.com/d/network-overview"
+    
+    - alert: NetworkPacketLoss
+      expr: probe_success{job="blackbox"} < 0.95
+      for: 5m
+      labels:
+        severity: warning
+        component: network
+      annotations:
+        summary: "Network packet loss to {{ $labels.instance }}"
+        description: "Network packet loss to {{ $labels.instance }} is {{ $value | humanizePercentage }} for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/packet-loss"
+        dashboard_url: "https://grafana.academic-system.com/d/network-overview"
+    
+    # Security Alerts
+    - alert: HighFailedLoginAttempts
+      expr: rate(auth_service_login_failures_total[5m]) > 50
+      for: 2m
+      labels:
+        severity: critical
+        component: security
+      annotations:
+        summary: "High failed login attempts detected"
+        description: "High rate of failed login attempts: {{ $value }} per second for the last 2 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-failed-logins"
+        dashboard_url: "https://grafana.academic-system.com/d/security-overview"
+    
+    - alert: SuspiciousAPIAccess
+      expr: rate(http_requests_total{job=~"auth-service|student-service|academic-service|finance-service",status="401"}[5m]) > 10
+      for: 5m
+      labels:
+        severity: warning
+        component: security
+      annotations:
+        summary: "Suspicious API access detected"
+        description: "High rate of unauthorized API access: {{ $value }} per second for the last 5 minutes."
+        runbook_url: "https://docs.academic-system.com/runbooks/suspicious-api-access"
+        dashboard_url: "https://grafana.academic-system.com/d/security-overview"
+    
+    - alert: CertificateExpiringSoon
+      expr: probe_ssl_earliest_cert_expiry - time() < 86400 * 30
+      for: 1h
+      labels:
+        severity: warning
+        component: security
+      annotations:
+        summary: "SSL certificate expiring soon for {{ $labels.instance }}"
+        description: "SSL certificate for {{ $labels.instance }} expires in {{ $value | humanizeDuration }}."
+        runbook_url: "https://docs.academic-system.com/runbooks/certificate-expiring"
+        dashboard_url: "https://grafana.academic-system.com/d/security-overview"
+    
+    # Business Metrics Alerts
+    - alert: LowStudentEngagement
+      expr: student_service_active_users_last_7d / student_service_total_users < 0.5
+      for: 24h
+      labels:
+        severity: warning
+        component: business
+      annotations:
+        summary: "Low student engagement detected"
+        description: "Only {{ $value | humanizePercentage }} of students have been active in the last 7 days."
+        runbook_url: "https://docs.academic-system.com/runbooks/low-engagement"
+        dashboard_url: "https://grafana.academic-system.com/d/business-metrics"
+    
+    - alert: HighDropoutRisk
+      expr: analytics_service_dropout_risk_students > 100
+      for: 1h
+      labels:
+        severity: warning
+        component: business
+      annotations:
+        summary: "High dropout risk detected"
+        description: "{{ $value }} students are at high risk of dropping out."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-dropout-risk"
+        dashboard_url: "https://grafana.academic-system.com/d/business-metrics"
+    
+    - alert: LowCourseCompletionRate
+      expr: academic_service_course_completion_rate < 0.8
+      for: 24h
+      labels:
+        severity: warning
+        component: business
+      annotations:
+        summary: "Low course completion rate"
+        description: "Course completion rate is {{ $value | humanizePercentage }}."
+        runbook_url: "https://docs.academic-system.com/runbooks/low-completion-rate"
+        dashboard_url: "https://grafana.academic-system.com/d/business-metrics"
+    
+    - alert: HighPaymentDelinquency
+      expr: finance_service_overdue_payments / finance_service_total_payments > 0.1
+      for: 24h
+      labels:
+        severity: warning
+        component: business
+      annotations:
+        summary: "High payment delinquency rate"
+        description: "Payment delinquency rate is {{ $value | humanizePercentage }}."
+        runbook_url: "https://docs.academic-system.com/runbooks/high-delinquency"
+        dashboard_url: "https://grafana.academic-system.com/d/business-metrics"
+    
+    # Disaster Recovery Alerts
+    - alert: BackupFailed
+      expr: backup_success == 0
+      for: 1h
+      labels:
+        severity: critical
+        component: disaster-recovery
+      annotations:
+        summary: "Backup failed for {{ $labels.service }}"
+        description: "Backup failed for {{ $labels.service }} on {{ $labels.backup_date }}."
+        runbook_url: "https://docs.academic-system.com/runbooks/backup-failed"
+        dashboard_url: "https://grafana.academic-system.com/d/disaster-recovery"
+    
+    - alert: BackupOld
+      expr: time() - backup_last_success_timestamp > 86400 * 2
+      for: 1h
+      labels:
+        severity: warning
+        component: disaster-recovery
+      annotations:
+        summary: "Backup is old for {{ $labels.service }}"
+        description: "Last successful backup for {{ $labels.service }} was {{ $value | humanizeDuration }} ago."
+        runbook_url: "https://docs.academic-system.com/runbooks/backup-old"
+        dashboard_url: "https://grafana.academic-system.com/d/disaster-recovery"
+    
+    - alert: ReplicationLag
+      expr: replication_lag_seconds > 300
+      for: 5m
+      labels:
+        severity: warning
+        component: disaster-recovery
+      annotations:
+        summary: "High replication lag for {{ $labels.service }}"
+        description: "Replication lag for {{ $labels.service }} is {{ $value }}s."
+        runbook_url: "https://docs.academic-system.com/runbooks/replication-lag"
+        dashboard_url: "https://grafana.academic-system.com/d/disaster-recovery"
+    
+    - alert: FailoverTriggered
+      expr: failover_active == 1
+      for: 1m
+      labels:
+        severity: critical
+        component: disaster-recovery
+      annotations:
+        summary: "Failover triggered for {{ $labels.service }}"
+        description: "Failover has been triggered for {{ $labels.service }}."
+        runbook_url: "https://docs.academic-system.com/runbooks/failover-triggered"
+        dashboard_url: "https://grafana.academic-system.com/d/disaster-recovery"

@@ -1,0 +1,936 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: academic-system
+  labels:
+    app: auth-service
+    version: v1
+    component: authentication
+    part-of: academic-system
+    managed-by: kubernetes
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+      progressDeadlineSeconds: 600
+  selector:
+    matchLabels:
+      app: auth-service
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        version: v1
+        component: authentication
+        part-of: academic-system
+        managed-by: kubernetes
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+        sidecar.istio.io/inject: "true"
+        sidecar.istio.io/rewriteAppHTTPProbe: "true"
+        kubernetes.io/psp: "restricted"
+        security.alpha.kubernetes.io/allow-privileged: "false"
+        security.alpha.kubernetes.io/allow-privilege-escalation: "false"
+    spec:
+      serviceAccountName: auth-service
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile:
+          type: RuntimeDefault
+        readOnlyRootFilesystem: true
+      initContainers:
+      - name: init-db
+        image: postgres:15-alpine
+        command: ["sh", "-c", "until pg_isready -h $DATABASE_HOST -p $DATABASE_PORT -U $DATABASE_USER; do echo waiting for database; sleep 2; done"]
+        env:
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: database-host
+        - name: DATABASE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: database-port
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secrets
+              key: database-user
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      - name: init-redis
+        image: redis:7-alpine
+        command: ["sh", "-c", "until redis-cli -h $REDIS_HOST -p $REDIS_PORT ping; do echo waiting for redis; sleep 2; done"]
+        env:
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: redis-host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: redis-port
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      containers:
+      - name: auth-service
+        image: academic-system/auth-service:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8001
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: PORT
+          value: "8001"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: METRICS_PORT
+          value: "9090"
+        - name: DATABASE_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: database-host
+        - name: DATABASE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: database-port
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secrets
+              key: database-user
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secrets
+              key: database-password
+        - name: DATABASE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: database-name
+        - name: DATABASE_SSLMODE
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: database-sslmode
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: redis-host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: redis-port
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secrets
+              key: redis-password
+        - name: KAFKA_BROKERS
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: kafka-brokers
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: auth-service-secrets
+              key: jwt-secret
+        - name: JWT_ACCESS_EXPIRY
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: jwt-access-expiry
+        - name: JWT_REFRESH_EXPIRY
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: jwt-refresh-expiry
+        - name: JWT_ISSUER
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: jwt-issuer
+        - name: JAEGER_ENDPOINT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: jaeger-endpoint
+        - name: CONSUL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: consul-host
+        - name: CONSUL_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: auth-service-config
+              key: consul-port
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+          terminationGracePeriodSeconds: 60
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+          terminationGracePeriodSeconds: 60
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+          successThreshold: 1
+          terminationGracePeriodSeconds: 60
+        lifecycle:
+          preStop:
+            httpGet:
+              path: /shutdown
+              port: http
+              scheme: HTTP
+          postStart:
+            httpGet:
+              path: /startup
+              port: http
+              scheme: HTTP
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 1001
+          runAsGroup: 1001
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        - name: migrations
+          mountPath: /app/migrations
+          readOnly: true
+        - name: logs
+          mountPath: /app/logs
+        - name: config
+          mountPath: /app/config
+          readOnly: true
+      - name: log-shipper
+        image: fluent/fluent-bit:2.2
+        env:
+        - name: FLUENT_BIT_CONF_FILE
+          value: "/fluent-bit/etc/fluent-bit.conf"
+        - name: FLUENT_BIT_PLUGINS_FILE
+          value: "/fluent-bit/etc/plugins.conf"
+        - name: ELASTICSEARCH_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: logging-config
+              key: elasticsearch-host
+        - name: ELASTICSEARCH_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: logging-config
+              key: elasticsearch-port
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+          readOnly: true
+        - name: fluent-bit-config
+          mountPath: /fluent-bit/etc
+          readOnly: true
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      - name: migrations
+        configMap:
+          name: auth-service-migrations
+          defaultMode: 0444
+      - name: logs
+        emptyDir: {}
+      - name: config
+        configMap:
+          name: auth-service-config
+          defaultMode: 0444
+      - name: fluent-bit-config
+        configMap:
+          name: fluent-bit-config
+          defaultMode: 0444
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 60
+      nodeSelector:
+        node-type: application
+        kubernetes.io/arch: amd64
+      tolerations:
+      - key: "application"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - auth-service
+                - key: version
+                  operator: In
+                  values:
+                  - v1
+              topologyKey: kubernetes.io/hostname
+          - weight: 50
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - auth-service
+              topologyKey: kubernetes.io/zone
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - application
+          - weight: 50
+            preference:
+              matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - amd64
+      topologySpreadConstraints:
+      - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app: auth-service
+          version: v1
+      - maxSkew: 2
+      topologyKey: kubernetes.io/zone
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app: auth-service
+          version: v1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-service
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: authentication
+    part-of: academic-system
+  annotations:
+    iam.amazonaws.com/role: "arn:aws:iam::123456789012:role/auth-service-role"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: authentication
+    part-of: academic-system
+    service-type: cluster-ip
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9090"
+    prometheus.io/path: "/metrics"
+    kubernetes.io/psp: "restricted"
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "http"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/health"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "30"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "3"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 80
+    targetPort: http
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: http
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: metrics
+    protocol: TCP
+  selector:
+    app: auth-service
+    version: v1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service-headless
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: authentication
+    part-of: academic-system
+    service-type: headless
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: http
+    port: 8001
+    targetPort: http
+    protocol: TCP
+  selector:
+    app: auth-service
+    version: v1
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: authentication
+    part-of: academic-system
+spec:
+  minAvailable: 2
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: auth-service
+      version: v1
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-service-hpa
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: authentication
+    part-of: academic-system
+  annotations:
+    autoscaling.alpha.kubernetes.io/conditions: "[]"
+    autoscaling.alpha.kubernetes.io/metrics: "[]"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "100"
+  - type: External
+    external:
+      metric:
+        name: queue_messages_ready
+      target:
+        type: AverageValue
+        averageValue: "30"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+---
+apiVersion: autoscaling/v2
+kind: VerticalPodAutoscaler
+metadata:
+  name: auth-service-vpa
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: authentication
+    part-of: academic-system
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service
+  updatePolicy:
+    updateMode: "Auto"
+  resourcePolicy:
+    containerPolicies:
+    - containerName: auth-service
+      minAllowed:
+        cpu: 100m
+        memory: 128Mi
+      maxAllowed:
+        cpu: 1000m
+        memory: 1Gi
+      controlledResources: ["cpu", "memory"]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auth-service-network-policy
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: authentication
+    part-of: academic-system
+spec:
+  podSelector:
+    matchLabels:
+      app: auth-service
+      version: v1
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow traffic from Istio ingress gateway
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          istio-injection: enabled
+    ports:
+    - protocol: TCP
+      port: 8001
+  # Allow traffic from other services in the same namespace
+  - from:
+    - podSelector: {}
+    ports:
+    - protocol: TCP
+      port: 8001
+  # Allow traffic from monitoring namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 9090
+  # Allow traffic from Istio sidecar
+  - from:
+    - podSelector:
+        matchLabels:
+          security.istio.io/tlsMode: istio
+    ports:
+    - protocol: TCP
+      port: 8001
+    - protocol: TCP
+      port: 9090
+  egress:
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow traffic to database
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Allow traffic to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app: redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow traffic to Kafka
+  - to:
+    - podSelector:
+        matchLabels:
+          app: kafka
+    ports:
+    - protocol: TCP
+      port: 9092
+  # Allow traffic to Elasticsearch
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: logging
+    ports:
+    - protocol: TCP
+      port: 9200
+  # Allow traffic to external services (HTTPS)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+  # Allow traffic to external services (HTTP)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+  # Allow traffic to Kubernetes API
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: configuration
+    part-of: academic-system
+data:
+  # Database Configuration
+  database-host: "postgres-auth.default.svc.cluster.local"
+  database-port: "5432"
+  database-name: "auth_db"
+  database-sslmode: "require"
+  database-max-open-conns: "25"
+  database-max-idle-conns: "5"
+  database-migration-path: "/app/migrations"
+  
+  # Redis Configuration
+  redis-host: "redis.default.svc.cluster.local"
+  redis-port: "6379"
+  redis-db: "0"
+  redis-max-retries: "3"
+  redis-pool-size: "10"
+  
+  # Kafka Configuration
+  kafka-brokers: "kafka.default.svc.cluster.local:9092"
+  kafka-topics-user-events: "user-events"
+  kafka-topics-auth-events: "auth-events"
+  kafka-topics-audit-events: "audit-events"
+  kafka-consumer-group: "auth-service-group"
+  kafka-session-timeout: "30s"
+  kafka-heartbeat-interval: "3s"
+  kafka-max-processing-time: "10s"
+  
+  # JWT Configuration
+  jwt-access-expiry: "15m"
+  jwt-refresh-expiry: "7d"
+  jwt-issuer: "academic-system"
+  jwt-algorithm: "HS256"
+  jwt-signing-method: "HS256"
+  
+  # Application Configuration
+  environment: "production"
+  port: "8001"
+  log-level: "info"
+  version: "1.0.0"
+  metrics-port: "9090"
+  
+  # Monitoring Configuration
+  jaeger-endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:14268/api/traces"
+  prometheus-port: "9090"
+  tracing-sample-rate: "0.1"
+  
+  # Rate Limiting Configuration
+  rate-limit-requests: "100"
+  rate-limit-window: "1m"
+  rate-limit-burst: "200"
+  
+  # CORS Configuration
+  cors-allowed-origins: "https://academic-system.com,https://api.academic-system.com"
+  cors-allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+  cors-allowed-headers: "Origin,Content-Type,Authorization,X-Request-ID,X-Forwarded-For"
+  cors-expose-headers: "X-Request-ID,X-Rate-Limit-Remaining"
+  
+  # Session Configuration
+  session-expiry: "24h"
+  session-cleanup-interval: "1h"
+  session-max-concurrent: "5"
+  
+  # Token Configuration
+  token-blacklist-expiry: "24h"
+  refresh-token-expiry: "7d"
+  password-reset-expiry: "1h"
+  email-verification-expiry: "24h"
+  
+  # Security Configuration
+  bcrypt-cost: "12"
+  max-login-attempts: "5"
+  lockout-duration: "15m"
+  password-min-length: "8"
+  password-require-uppercase: "true"
+  password-require-lowercase: "true"
+  password-require-numbers: "true"
+  password-require-symbols: "true"
+  
+  # Health Check Configuration
+  health-check-interval: "30s"
+  health-check-timeout: "5s"
+  health-check-failure-threshold: "3"
+  health-check-success-threshold: "1"
+  
+  # Performance Configuration
+  read-timeout: "15s"
+  write-timeout: "15s"
+  idle-timeout: "60s"
+  max-header-bytes: "1048576"
+  max-body-bytes: "10485760"
+  
+  # Circuit Breaker Configuration
+  circuit-breaker-threshold: "5"
+  circuit-breaker-timeout: "30s"
+  circuit-breaker-max-requests: "10"
+  
+  # Retry Configuration
+  retry-max-attempts: "3"
+  retry-initial-delay: "100ms"
+  retry-max-delay: "1s"
+  retry-multiplier: "2.0"
+  
+  # Consul Configuration
+  consul-host: "consul.default.svc.cluster.local"
+  consul-port: "8500"
+  consul-health-check-interval: "10s"
+  consul-deregister-critical-service-after: "30s"
+  
+  # Logging Configuration
+  log-format: "json"
+  log-level-debug: "false"
+  log-request-id: "true"
+  log-user-agent: "true"
+  log-remote-addr: "true"
+  log-response-time: "true"
+  log-request-body: "false"
+  log-response-body: "false"
+  
+  # Feature Flags
+  enable-metrics: "true"
+  enable-tracing: "true"
+  enable-audit-logging: "true"
+  enable-rate-limiting: "true"
+  enable-cors: "true"
+  enable-health-checks: "true"
+  enable-graceful-shutdown: "true"
+  enable-circuit-breaker: "true"
+  enable-retry: "true"
+  enable-consul: "true"
+  enable-prometheus: "true"
+  enable-jaeger: "true"
+  enable-istio: "true"
+  
+  # Disaster Recovery Configuration
+  backup-enabled: "true"
+  backup-interval: "6h"
+  backup-retention: "30d"
+  disaster-recovery-enabled: "true"
+  failover-enabled: "true"
+  failover-threshold: "3"
+  failover-timeout: "30s"
+  
+  # Observability Configuration
+  enable-distributed-tracing: "true"
+  enable-metrics-collection: "true"
+  enable-log-aggregation: "true"
+  enable-apm: "true"
+  tracing-sampling-rate: "0.1"
+  metrics-collection-interval: "15s"
+  log-aggregation-interval: "10s"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-service-secrets
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: secrets
+    part-of: academic-system
+  annotations:
+    kubernetes.io/secret-type: "Opaque"
+    vault.hashicorp.com/agent-inject: "true"
+    vault.hashicorp.com/role: "auth-service"
+    vault.hashicorp.com/agent-inject-secret-config: "secret/auth-service/config"
+type: Opaque
+data:
+  # Database Credentials (base64 encoded)
+  # echo -n "postgres" | base64
+  database-user: cG9zdGdyZXM=
+  # echo -n "your-secure-password" | base64
+  database-password: eW91ci1zZWN1cmUtcGFzc3dvcmQ=
+  
+  # Redis Credentials (base64 encoded)
+  # echo -n "" | base64 (empty password)
+  redis-password: ""
+  
+  # JWT Secret (base64 encoded) - Generate a secure random string
+  # openssl rand -base64 64 | tr -d '\n'
+  jwt-secret: eW91ci1zdXBlci1zZWNyZXQtand0LWtleS1oZXJlLW1ha2UtaXQtbG9uZy1hbmQtc2VjdXJlLWFuZC12ZXJ5LXN0cm9uZy1zZWNyZXQ=
+  
+  # Additional Security Secrets
+  # bcrypt-salt: (generated automatically by bcrypt)
+  # encryption-key: (for sensitive data encryption)
+  encryption-key: eW91ci1lbmNyeXB0aW9uLWtleS0zMmJ5dGVzLWxvbmctYW5kLXNlY3VyZS1lbmNyeXB0aW9uLWtleQ==
+  
+  # External API Keys (if needed)
+  # email-api-key: (base64 encoded)
+  email-api-key: ""
+  
+  # OAuth Secrets (if using OAuth)
+  # google-client-secret: (base64 encoded)
+  google-client-secret: ""
+  
+  # Monitoring Secrets
+  # prometheus-password: (base64 encoded)
+  prometheus-password: ""
+  
+  # Backup Encryption Key
+  backup-encryption-key: eW91ci1iYWNrdXAtZW5jcnlwdGlvbi1rZXktMzItYnl0ZXMtbG9uZy1hbmQtc2VjdXJl
+  
+  # TLS Certificates (if using self-signed)
+  # tls-cert: (base64 encoded)
+  tls-cert: ""
+  # tls-key: (base64 encoded)
+  tls-key: ""
+  
+  # Vault Configuration
+  vault-token: ""
+  vault-role: "auth-service"
+  vault-address: "https://vault.default.svc.cluster.local:8200"
+  
+  # AWS Configuration (if using AWS)
+  aws-access-key-id: ""
+  aws-secret-access-key: ""
+  aws-region: "us-west-2"
+  
+  # Datadog Configuration (if using Datadog)
+  datadog-api-key: ""
+  datadog-app-key: ""
+  
+  # New Relic Configuration (if using New Relic)
+  newrelic-license-key: ""

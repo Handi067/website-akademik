@@ -1,0 +1,104 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: academic-system
+  labels:
+    app: auth-service
+    component: configuration
+data:
+  # Database Configuration
+  database-host: "postgres-auth.default.svc.cluster.local"
+  database-port: "5432"
+  database-name: "auth_db"
+  database-sslmode: "require"
+  database-max-open-conns: "25"
+  database-max-idle-conns: "5"
+  database-migration-path: "/app/migrations"
+  
+  # Redis Configuration
+  redis-host: "redis.default.svc.cluster.local"
+  redis-port: "6379"
+  redis-db: "0"
+  
+  # Kafka Configuration
+  kafka-brokers: "kafka.default.svc.cluster.local:9092"
+  kafka-topics-user-events: "user-events"
+  kafka-topics-auth-events: "auth-events"
+  kafka-topics-audit-events: "audit-events"
+  
+  # JWT Configuration
+  jwt-access-expiry: "15m"
+  jwt-refresh-expiry: "7d"
+  jwt-issuer: "academic-system"
+  jwt-algorithm: "HS256"
+  
+  # Application Configuration
+  environment: "production"
+  port: "8001"
+  log-level: "info"
+  version: "1.0.0"
+  
+  # Monitoring Configuration
+  jaeger-endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:14268/api/traces"
+  prometheus-port: "9090"
+  
+  # Rate Limiting Configuration
+  rate-limit-requests: "100"
+  rate-limit-window: "1m"
+  
+  # CORS Configuration
+  cors-allowed-origins: "*"
+  cors-allowed-methods: "GET,POST,PUT,DELETE,OPTIONS"
+  cors-allowed-headers: "Origin,Content-Type,Authorization,X-Request-ID"
+  
+  # Session Configuration
+  session-expiry: "24h"
+  session-cleanup-interval: "1h"
+  
+  # Token Configuration
+  token-blacklist-expiry: "24h"
+  refresh-token-expiry: "7d"
+  password-reset-expiry: "1h"
+  
+  # Security Configuration
+  bcrypt-cost: "12"
+  max-login-attempts: "5"
+  lockout-duration: "15m"
+  
+  # Health Check Configuration
+  health-check-interval: "30s"
+  health-check-timeout: "5s"
+  health-check-failure-threshold: "3"
+  
+  # Performance Configuration
+  read-timeout: "15s"
+  write-timeout: "15s"
+  idle-timeout: "60s"
+  max-header-bytes: "1048576"
+  
+  # Logging Configuration
+  log-format: "json"
+  log-level-debug: "false"
+  log-request-id: "true"
+  log-user-agent: "true"
+  log-remote-addr: "true"
+  
+  # Feature Flags
+  enable-metrics: "true"
+  enable-tracing: "true"
+  enable-audit-logging: "true"
+  enable-rate-limiting: "true"
+  enable-cors: "true"
+  enable-health-checks: "true"
+  enable-graceful-shutdown: "true"
+  
+  # Development Overrides (for non-production environments)
+  dev-database-host: "localhost"
+  dev-database-port: "5432"
+  dev-redis-host: "localhost"
+  dev-redis-port: "6379"
+  dev-kafka-brokers: "localhost:9092"
+  dev-log-level: "debug"
+  dev-enable-pprof: "true"
+  dev-enable-debug: "true"

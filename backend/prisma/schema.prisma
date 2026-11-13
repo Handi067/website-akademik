@@ -1,0 +1,389 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique @db.VarChar(50)
+  email        String   @unique @db.VarChar(100)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  role         Role     @default(MAHASISWA)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  mahasiswa    Mahasiswa?
+  dosen        Dosen?
+  notifikasi   Notifikasi[]
+  auditLogs    AuditLog[]
+
+  @@map("users")
+}
+
+model Mahasiswa {
+  nim        String   @id @db.VarChar(20)
+  userId     String   @unique @map("user_id") @db.Uuid
+  namaMhs    String   @map("nama_mhs") @db.VarChar(100)
+  jurusan    String   @db.VarChar(50)
+  angkatan   String   @db.VarChar(10)
+  noHp       String?  @map("no_hp") @db.VarChar(15)
+  alamat     String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  krs        Krs[]
+  nilai      Nilai[]
+  absensi    Absensi[]
+  peminjaman Peminjaman[]
+  tagihan    Tagihan[]
+
+  @@index([nim])
+  @@index([userId])
+  @@map("mahasiswa")
+}
+
+model Dosen {
+  nidn           String   @id @db.VarChar(20)
+  userId         String   @unique @map("user_id") @db.Uuid
+  namaDosen      String   @map("nama_dosen") @db.VarChar(100)
+  gelarDepan     String?  @map("gelar_depan") @db.VarChar(20)
+  gelarBelakang  String?  @map("gelar_belakang") @db.VarChar(50)
+  email          String?  @db.VarChar(100)
+  noHp           String?  @map("no_hp") @db.VarChar(15)
+  departemen     String?  @db.VarChar(50)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jadwalKuliah   JadwalKuliah[]
+  pertemuan      Pertemuan[]
+
+  @@index([nidn])
+  @@index([userId])
+  @@map("dosen")
+}
+
+model Matakuliah {
+  kodeMK         String    @id @map("kode_mk") @db.VarChar(10)
+  namaMk         String    @map("nama_mk") @db.VarChar(100)
+  sks            Int
+  semester       String    @db.VarChar(20)
+  deskripsi      String?   @db.Text
+  kodePrasyarat  String?   @map("kode_prasyarat") @db.VarChar(10)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  jadwalKuliah   JadwalKuliah[]
+  nilai          Nilai[]
+  pertemuan      Pertemuan[]
+  prasyaratFor   Matakuliah? @relation("Prerequisite", fields: [kodePrasyarat], references: [kodeMK])
+  prasyarat      Matakuliah[] @relation("Prerequisite")
+
+  @@index([kodeMK])
+  @@map("matakuliah")
+}
+
+model JadwalKuliah {
+  id           String   @id @default(uuid()) @db.Uuid
+  kodeMk       String   @map("kode_mk") @db.VarChar(10)
+  nidn         String   @db.VarChar(20)
+  hari         Hari
+  jamMulai     DateTime @map("jam_mulai") @db.Time
+  jamSelesai   DateTime @map("jam_selesai") @db.Time
+  ruangan      String   @db.VarChar(20)
+  kelas        String?  @db.VarChar(20)
+  semester     String   @db.VarChar(20)
+  tahunAjaran  String   @map("tahun_ajaran") @db.VarChar(10)
+  kapasitas    Int      @default(40)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  matakuliah   Matakuliah @relation(fields: [kodeMk], references: [kodeMK], onDelete: Cascade)
+  dosen        Dosen      @relation(fields: [nidn], references: [nidn], onDelete: Cascade)
+  krs          Krs[]
+
+  @@index([kodeMk])
+  @@index([nidn])
+  @@index([semester, tahunAjaran])
+  @@map("jadwal_kuliah")
+}
+
+model Krs {
+  id           String      @id @default(uuid())
+  nim          String      @db.VarChar(20)
+  jadwalId     String      @map("jadwal_id") @db.Uuid
+  semester     String      @db.VarChar(20)
+  tahunAjaran  String      @map("tahun_ajaran") @db.VarChar(10)
+  status       KrsStatus   @default(AKTIF)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  mahasiswa    Mahasiswa   @relation(fields: [nim], references: [nim], onDelete: Cascade)
+  jadwalKuliah JadwalKuliah @relation(fields: [jadwalId], references: [id], onDelete: Cascade)
+
+  @@unique([nim, jadwalId, semester, tahunAjaran])
+  @@index([nim])
+  @@index([jadwalId])
+  @@map("krs")
+}
+
+model Nilai {
+  id           String   @id @default(uuid())
+  nim          String   @db.VarChar(20)
+  kodeMk       String   @map("kode_mk") @db.VarChar(10)
+  tugas        Decimal? @db.Decimal(5, 2)
+  uts          Decimal? @db.Decimal(5, 2)
+  uas          Decimal? @db.Decimal(5, 2)
+  nilaiAkhir   Decimal? @map("nilai_akhir") @db.Decimal(5, 2)
+  grade        Grade?
+  semester     String   @db.VarChar(20)
+  tahunAjaran  String   @map("tahun_ajaran") @db.VarChar(10)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  mahasiswa    Mahasiswa @relation(fields: [nim], references: [nim], onDelete: Cascade)
+  matakuliah   Matakuliah @relation(fields: [kodeMk], references: [kodeMK], onDelete: Cascade)
+
+  @@unique([nim, kodeMk, semester, tahunAjaran])
+  @@index([nim])
+  @@index([kodeMk])
+  @@map("nilai")
+}
+
+model Pertemuan {
+  id           String   @id @default(uuid()) @db.Uuid
+  kodeMk       String   @map("kode_mk") @db.VarChar(10)
+  nidn         String   @db.VarChar(20)
+  pertemuanKe  Int      @map("pertemuan_ke")
+  tanggal      DateTime @db.Date
+  topik        String?  @db.VarChar(200)
+  materi       String?  @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  matakuliah   Matakuliah @relation(fields: [kodeMk], references: [kodeMK], onDelete: Cascade)
+  dosen        Dosen      @relation(fields: [nidn], references: [nidn], onDelete: Cascade)
+  absensi      Absensi[]
+
+  @@map("pertemuan")
+}
+
+model Absensi {
+  id           String      @id @default(uuid())
+  pertemuanId  String      @map("pertemuan_id") @db.Uuid
+  nim          String      @db.VarChar(20)
+  statusHadir  StatusHadir @map("status_hadir")
+  jamMasuk     DateTime?   @map("jam_masuk") @db.Time
+  keterangan   String?     @db.Text
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  // Relations
+  pertemuan    Pertemuan   @relation(fields: [pertemuanId], references: [id], onDelete: Cascade)
+  mahasiswa    Mahasiswa   @relation(fields: [nim], references: [nim], onDelete: Cascade)
+
+  @@unique([pertemuanId, nim])
+  @@index([pertemuanId])
+  @@index([nim])
+  @@map("absensi")
+}
+
+model Notifikasi {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id") @db.Uuid
+  judul     String           @db.VarChar(200)
+  pesan     String           @db.Text
+  tipe      NotifikasiTipe   @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+  readAt    DateTime?        @map("read_at")
+
+  // Relations
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifikasi")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id") @db.Uuid
+  aksi      String   @db.VarChar(50)
+  tabel     String   @db.VarChar(50)
+  recordId  String?  @map("record_id") @db.VarChar(50)
+  dataLama  Json?    @map("data_lama")
+  dataBaru  Json?    @map("data_baru")
+  ipAddress String?  @map("ip_address") @db.Inet
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([tabel])
+  @@index([createdAt])
+  @@map("audit_log")
+}
+
+model Buku {
+  kodeBuku   String   @id @map("kode_buku") @db.VarChar(20)
+  judul      String   @db.VarChar(200)
+  pengarang  String   @db.VarChar(100)
+  penerbit   String   @db.VarChar(100)
+  tahun      Int
+  isbn       String?  @db.VarChar(20)
+  kategori   String   @db.VarChar(50)
+  jumlah     Int      @default(1)
+  tersedia   Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  peminjaman Peminjaman[]
+
+  @@index([kodeBuku])
+  @@map("buku")
+}
+
+model Peminjaman {
+  id           String         @id @default(uuid())
+  kodeBuku     String         @map("kode_buku") @db.VarChar(20)
+  nim          String         @db.VarChar(20)
+  tanggalPinjam DateTime       @map("tanggal_pinjam") @db.Date
+  tanggalKembali DateTime?     @map("tanggal_kembali") @db.Date
+  tenggat      DateTime       @db.Date
+  status       PeminjamanStatus @default(AKTIF)
+  denda        Decimal?       @db.Decimal(10, 2) @default(0)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  // Relations
+  buku         Buku           @relation(fields: [kodeBuku], references: [kodeBuku], onDelete: Cascade)
+  mahasiswa    Mahasiswa      @relation(fields: [nim], references: [nim], onDelete: Cascade)
+
+  @@index([kodeBuku])
+  @@index([nim])
+  @@map("peminjaman")
+}
+
+// Enums
+enum Role {
+  ADMIN
+  DOSEN
+  MAHASISWA
+}
+
+enum Hari {
+  SENIN
+  SELASA
+  RABU
+  KAMIS
+  JUMAT
+  SABTU
+  MINGGU
+}
+
+enum KrsStatus {
+  AKTIF
+  BATAL
+  SELESAI
+}
+
+enum Grade {
+  A
+  B_PLUS
+  B
+  C_PLUS
+  C
+  D
+  E
+}
+
+enum StatusHadir {
+  HADIR
+  IZIN
+  SAKIT
+  ALPA
+}
+
+enum NotifikasiTipe {
+  INFO
+  WARNING
+  SUCCESS
+  ERROR
+}
+
+enum PeminjamanStatus {
+  AKTIF
+  DIKEMBALIKAN
+  TERLAMBAT
+}
+
+enum JenisTagihan {
+  UKT
+  SPP
+}
+
+enum StatusPembayaran {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+model Tagihan {
+  id              String           @id @default(uuid()) @db.Uuid
+  nim             String           @db.VarChar(20)
+  jenisTagihan    JenisTagihan     @map("jenis_tagihan")
+  jumlah          Decimal          @db.Decimal(12, 2)
+  status          StatusPembayaran @default(PENDING)
+  tenggatWaktu    DateTime         @map("tenggat_waktu") @db.Date
+  keterangan      String?          @db.Text
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  mahasiswa       Mahasiswa        @relation(fields: [nim], references: [nim], onDelete: Cascade)
+  pembayaran      Pembayaran[]
+
+  @@index([nim])
+  @@index([status])
+  @@map("tagihan")
+}
+
+model Pembayaran {
+  id              String           @id @default(uuid())
+  tagihanId       String           @map("tagihan_id") @db.Uuid
+  metodePembayaran String?         @map("metode_pembayaran") @db.VarChar(50)
+  transactionId   String?          @map("transaction_id") @db.VarChar(100)
+  paymentUrl      String?          @map("payment_url") @db.VarChar(255)
+  waktuTransaksi  DateTime?        @map("waktu_transaksi")
+  status          StatusPembayaran @default(PENDING)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  tagihan         Tagihan          @relation(fields: [tagihanId], references: [id], onDelete: Cascade)
+
+  @@index([tagihanId])
+  @@index([transactionId])
+  @@map("pembayaran")
+}

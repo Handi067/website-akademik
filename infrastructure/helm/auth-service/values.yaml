@@ -1,0 +1,521 @@
+# Default values for auth-service Helm chart
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+  postgresql:
+    auth:
+      postgresPassword: "changeme"
+      database: "auth_db"
+  redis:
+    auth:
+      enabled: false
+      password: ""
+  kafka:
+    enabled: true
+
+# Image settings
+image:
+  registry: docker.io
+  repository: academic-system/auth-service
+  tag: "latest"
+  pullPolicy: Always
+  pullSecrets: []
+
+# Replica count
+replicaCount: 3
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  fsGroup: 1001
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+    - ALL
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8001
+  annotations: {}
+  headless:
+    enabled: true
+    port: 8001
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "Origin, Content-Type, Authorization, X-Request-ID"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: auth.academic-system.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: api.academic-system.com
+      paths:
+        - path: /auth
+          pathType: Prefix
+        - path: /api/v1/auth
+          pathType: Prefix
+  tls:
+    - secretName: auth-service-tls
+      hosts:
+        - auth.academic-system.com
+        - api.academic-system.com
+
+# Resource configuration
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Horizontal Pod Autoscaler
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+      - type: Pods
+        value: 4
+        periodSeconds: 15
+      selectPolicy: Max
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Node selector
+nodeSelector:
+  node-type: application
+
+# Tolerations
+tolerations:
+  - key: "application"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app
+            operator: In
+            values:
+            - auth-service
+        topologyKey: kubernetes.io/hostname
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+  successThreshold: 1
+
+# Environment variables
+env:
+  ENVIRONMENT: "production"
+  PORT: "8001"
+  LOG_LEVEL: "info"
+  VERSION: "1.0.0"
+
+# Configuration from ConfigMap
+configMap:
+  # Database configuration
+  database:
+    host: "postgres-auth.default.svc.cluster.local"
+    port: "5432"
+    name: "auth_db"
+    sslmode: "require"
+    maxOpenConns: "25"
+    maxIdleConns: "5"
+    migrationPath: "/app/migrations"
+  
+  # Redis configuration
+  redis:
+    host: "redis.default.svc.cluster.local"
+    port: "6379"
+    db: "0"
+  
+  # Kafka configuration
+  kafka:
+    brokers: "kafka.default.svc.cluster.local:9092"
+    topics:
+      userEvents: "user-events"
+      authEvents: "auth-events"
+      auditEvents: "audit-events"
+  
+  # JWT configuration
+  jwt:
+    accessExpiry: "15m"
+    refreshExpiry: "7d"
+    issuer: "academic-system"
+    algorithm: "HS256"
+  
+  # Monitoring configuration
+  jaeger:
+    endpoint: "http://jaeger-collector.monitoring.svc.cluster.local:14268/api/traces"
+  prometheus:
+    port: "9090"
+  
+  # Rate limiting
+  rateLimit:
+    requests: "100"
+    window: "1m"
+  
+  # CORS configuration
+  cors:
+    allowedOrigins: "*"
+    allowedMethods: "GET,POST,PUT,DELETE,OPTIONS"
+    allowedHeaders: "Origin,Content-Type,Authorization,X-Request-ID"
+  
+  # Session configuration
+  session:
+    expiry: "24h"
+    cleanupInterval: "1h"
+  
+  # Token configuration
+  token:
+    blacklistExpiry: "24h"
+    refreshTokenExpiry: "7d"
+    passwordResetExpiry: "1h"
+  
+  # Security configuration
+  security:
+    bcryptCost: "12"
+    maxLoginAttempts: "5"
+    lockoutDuration: "15m"
+  
+  # Performance configuration
+  performance:
+    readTimeout: "15s"
+    writeTimeout: "15s"
+    idleTimeout: "60s"
+    maxHeaderBytes: "1048576"
+  
+  # Feature flags
+  features:
+    enableMetrics: "true"
+    enableTracing: "true"
+    enableAuditLogging: "true"
+    enableRateLimiting: "true"
+    enableCORS: "true"
+    enableHealthChecks: "true"
+    enableGracefulShutdown: "true"
+
+# Secrets
+secrets:
+  # Database credentials
+  database:
+    user: "postgres"
+    password: "changeme"
+  
+  # Redis credentials
+  redis:
+    password: ""
+  
+  # JWT secret
+  jwt:
+    secret: "your-super-secret-jwt-key-here"
+  
+  # Encryption key
+  encryption:
+    key: "your-encryption-key-32-bytes-long"
+
+# PostgreSQL dependency configuration
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "changeme"
+    database: "auth_db"
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+
+# Redis dependency configuration
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 4Gi
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# Kafka dependency configuration
+kafka:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 8Gi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+
+# Monitoring
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: "monitoring"
+    labels:
+      release: "prometheus"
+    interval: 30s
+    scrapeTimeout: 10s
+  prometheusRule:
+    enabled: true
+    namespace: "monitoring"
+    labels:
+      release: "prometheus"
+    rules:
+      - alert: AuthServiceDown
+        expr: up{job="auth-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Auth service is down"
+          description: "Auth service has been down for more than 1 minute."
+      - alert: AuthServiceHighErrorRate
+        expr: rate(http_requests_total{job="auth-service",status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Auth service high error rate"
+          description: "Auth service error rate is above 10% for more than 5 minutes."
+      - alert: AuthServiceHighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="auth-service"}[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Auth service high latency"
+          description: "Auth service 95th percentile latency is above 1 second for more than 5 minutes."
+
+# Network policies
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8001
+    - from:
+      - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8001
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+  egress:
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+    - to:
+      - podSelector:
+          matchLabels:
+            app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+      - podSelector:
+          matchLabels:
+            app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+      - podSelector:
+          matchLabels:
+            app: kafka
+      ports:
+        - protocol: TCP
+          port: 9092
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 80
+
+# Pod annotations
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+# Service annotations
+serviceAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+# Volumes
+volumes:
+  - name: tmp
+    emptyDir: {}
+  - name: migrations
+    configMap:
+      name: auth-service-migrations
+
+# Volume mounts
+volumeMounts:
+  - name: tmp
+    mountPath: /tmp
+  - name: migrations
+    mountPath: /app/migrations
+    readOnly: true
+
+# Init containers
+initContainers: []
+
+# Sidecars
+sidecars: []
+
+# Extra labels
+extraLabels: {}
+
+# Extra annotations
+extraAnnotations: {}
+
+# Node tolerations
+extraTolerations: []
+
+# Node affinity
+extraAffinity: {}
+
+# Pod topology spread constraints
+topologySpreadConstraints: []
+
+# Priority class
+priorityClassName: ""
+
+# Termination grace period
+terminationGracePeriodSeconds: 30
+
+# DNS configuration
+dnsConfig: {}
+
+# DNS policy
+dnsPolicy: ""
+
+# Host aliases
+hostAliases: []
+
+# Extra environment variables
+extraEnv: []
+
+# Extra environment from config maps
+extraEnvFrom: []
+
+# Extra volumes
+extraVolumes: []
+
+# Extra volume mounts
+extraVolumeMounts: []

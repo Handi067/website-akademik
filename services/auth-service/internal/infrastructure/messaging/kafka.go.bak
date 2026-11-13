@@ -1,0 +1,171 @@
+package messaging
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/academic-system/auth-service/internal/config"
+	"github.com/confluentinc/confluent-kafka-go/kafka"
+)
+
+type Producer struct {
+	producer *kafka.Producer
+	topics   config.TopicsConfig
+}
+
+type Event struct {
+	Type      string      `json:"type"`
+	Data      interface{} `json:"data"`
+	Timestamp string      `json:"timestamp"`
+	UserID    string      `json:"user_id,omitempty"`
+	RequestID string      `json:"request_id,omitempty"`
+}
+
+type Consumer struct {
+	consumer *kafka.Consumer
+}
+
+func NewProducer(cfg config.KafkaConfig) (*Producer, error) {
+	config := &kafka.ConfigMap{
+		"bootstrap.servers":  cfg.Brokers[0],
+		"client.id":          "auth-service",
+		"acks":               "all",
+		"retries":            3,
+		"retry.backoff.ms":   100,
+		"socket.timeout.ms":  60000,
+		"enable.idempotence": true,
+	}
+
+	producer, err := kafka.NewProducer(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kafka producer: %w", err)
+	}
+
+	return &Producer{
+		producer: producer,
+		topics:   cfg.Topics,
+	}, nil
+}
+
+func (p *Producer) Close() error {
+	p.producer.Close()
+	return nil
+}
+
+// PublishUserEvent publishes user-related events
+func (p *Producer) PublishUserEvent(ctx context.Context, eventType string, data interface{}, userID, requestID string) error {
+	event := Event{
+		Type:      eventType,
+		Data:      data,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		UserID:    userID,
+		RequestID: requestID,
+	}
+
+	return p.publish(p.topics.UserEvents, event)
+}
+
+// PublishAuthEvent publishes authentication-related events
+func (p *Producer) PublishAuthEvent(ctx context.Context, eventType string, data interface{}, userID, requestID string) error {
+	event := Event{
+		Type:      eventType,
+		Data:      data,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		UserID:    userID,
+		RequestID: requestID,
+	}
+
+	return p.publish(p.topics.AuthEvents, event)
+}
+
+// PublishAuditEvent publishes audit-related events
+func (p *Producer) PublishAuditEvent(ctx context.Context, eventType string, data interface{}, userID, requestID string) error {
+	event := Event{
+		Type:      eventType,
+		Data:      data,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		UserID:    userID,
+		RequestID: requestID,
+	}
+
+	return p.publish(p.topics.AuditEvents, event)
+}
+
+func (p *Producer) publish(topic string, event Event) error {
+	message, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	// Produce message
+	deliveryChan := make(chan kafka.Event, 1)
+	err = p.producer.Produce(&kafka.Message{
+		TopicPartition: kafka.TopicPartition{
+			Topic:     &topic,
+			Partition: kafka.PartitionAny,
+		},
+		Value: message,
+		Headers: []kafka.Header{
+			{Key: "event-type", Value: []byte(event.Type)},
+			{Key: "timestamp", Value: []byte(event.Timestamp)},
+			{Key: "user-id", Value: []byte(event.UserID)},
+			{Key: "request-id", Value: []byte(event.RequestID)},
+		},
+	}, deliveryChan)
+
+	if err != nil {
+		return fmt.Errorf("failed to produce message: %w", err)
+	}
+
+	// Wait for delivery report
+	e := <-deliveryChan
+	m := e.(*kafka.Message)
+
+	if m.TopicPartition.Error != nil {
+		return fmt.Errorf("delivery failed: %w", m.TopicPartition.Error)
+	}
+
+	return nil
+}
+
+func NewConsumer(cfg config.KafkaConfig, groupID string) (*Consumer, error) {
+	config := &kafka.ConfigMap{
+		"bootstrap.servers":  cfg.Brokers[0],
+		"group.id":           groupID,
+		"auto.offset.reset":  "earliest",
+		"enable.auto.commit": "false",
+	}
+
+	consumer, err := kafka.NewConsumer(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kafka consumer: %w", err)
+	}
+
+	return &Consumer{
+		consumer: consumer,
+	}, nil
+}
+
+func (c *Consumer) Subscribe(topics []string) error {
+	err := c.consumer.SubscribeTopics(topics, nil)
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to topics: %w", err)
+	}
+	return nil
+}
+
+func (c *Consumer) ReadMessage(timeout time.Duration) (*kafka.Message, error) {
+	return c.consumer.ReadMessage(timeout)
+}
+
+func (c *Consumer) Close() error {
+	c.consumer.Close()
+	return nil
+}
+
+func (c *Consumer) CommitMessage(msg *kafka.Message) error {
+	_, err := c.consumer.CommitMessage(msg)
+	return err
+}
