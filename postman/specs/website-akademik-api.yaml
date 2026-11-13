@@ -1,0 +1,1223 @@
+openapi: 3.0.3
+info:
+  title: Website Akademik API
+  version: 1.0.0
+  description: |
+    REST API Sistem Informasi Akademik: mahasiswa, dosen, mata kuliah, jadwal, KRS, nilai/KHS,
+    absensi, tagihan & pembayaran, perpustakaan, notifikasi, dan audit log.
+
+    **Autentikasi** — login lewat `POST /auth/login`, lalu kirim `Authorization: Bearer <accessToken>`.
+    Access token berumur pendek; perbarui dengan `POST /auth/refresh-token`.
+
+    **Format respons** — semua endpoint membungkus hasil dalam `{ success, message, data }`.
+    Kegagalan berisi `error` (kode mesin) dan `message` (pesan untuk pengguna, bahasa Indonesia).
+    Status HTTP mengikuti kode error: `VALIDATION_ERROR` → 400, `FORBIDDEN` → 403,
+    `*NOT_FOUND` → 404, `*_EXISTS` / `*CONFLICT` / `IN_USE` → 409, aturan bisnis lain → 400.
+
+    **Peran** — `ADMIN`, `DOSEN`, `MAHASISWA`. Hak akses tiap endpoint dicantumkan di deskripsinya.
+servers:
+  - url: http://localhost:3001/api
+    description: Pengembangan lokal
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Mahasiswa
+  - name: Dosen
+  - name: Mata Kuliah
+  - name: Jadwal
+  - name: KRS
+  - name: Nilai
+  - name: Absensi
+  - name: Tagihan
+  - name: Pembayaran
+  - name: Perpustakaan
+  - name: Notifikasi
+  - name: Umum
+
+paths:
+  # ───────────────────────── Auth ─────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string, description: Username atau email, example: mahasiswa1 }
+                password: { type: string, format: password, example: mahasiswa123 }
+      responses:
+        '200':
+          description: Login berhasil
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user: { $ref: '#/components/schemas/User' }
+                          accessToken: { type: string }
+                          refreshToken: { type: string }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrasi akun (peran default MAHASISWA, tidak bisa mendaftar sebagai ADMIN)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password, confirmPassword]
+              properties:
+                username: { type: string, pattern: '^[a-zA-Z0-9_]{3,50}$' }
+                email: { type: string, format: email }
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  description: Minimal 8 karakter dengan huruf besar, huruf kecil, angka, dan simbol (@$!%*?&)
+                confirmPassword: { type: string, format: password }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/refresh-token:
+    post:
+      tags: [Auth]
+      summary: Perbarui access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/profile:
+    get:
+      tags: [Auth]
+      summary: Profil pengguna yang sedang login
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Auth]
+      summary: Ubah email profil
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+  /auth/change-password:
+    post:
+      tags: [Auth]
+      summary: Ganti password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword, confirmPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, format: password, minLength: 8 }
+                confirmPassword: { type: string, format: password }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+
+  # ───────────────────────── Umum ─────────────────────────
+  /:
+    get:
+      tags: [Umum]
+      summary: Info nama & versi API
+      security: []
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+  /periode:
+    get:
+      tags: [Umum]
+      summary: Periode akademik aktif dan batas SKS
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        allOf:
+                          - $ref: '#/components/schemas/Periode'
+                          - type: object
+                            properties:
+                              maxSks: { type: integer, example: 24 }
+  /dashboard:
+    get:
+      tags: [Umum]
+      summary: Ringkasan dashboard sesuai peran pengguna
+      description: Struktur `data` berbeda per peran dan dibedakan oleh field `role`.
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+
+  # ───────────────────────── Mahasiswa ─────────────────────────
+  /mahasiswa:
+    get:
+      tags: [Mahasiswa]
+      summary: Daftar mahasiswa (ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+        - { name: jurusan, in: query, schema: { type: string } }
+        - { name: angkatan, in: query, schema: { type: string } }
+        - { name: sortBy, in: query, schema: { type: string } }
+        - { name: sortOrder, in: query, schema: { type: string, enum: [asc, desc] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          mahasiswa:
+                            type: array
+                            items: { $ref: '#/components/schemas/Mahasiswa' }
+                          pagination: { $ref: '#/components/schemas/Pagination' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Mahasiswa]
+      summary: Tambah mahasiswa beserta akun login (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/MahasiswaInput'
+                - type: object
+                  required: [nim, username, email, password]
+                  properties:
+                    nim: { type: string, pattern: '^[0-9]{8,20}$' }
+                    username: { type: string, pattern: '^[a-zA-Z0-9_]{3,50}$' }
+                    email: { type: string, format: email }
+                    password: { type: string, format: password, minLength: 8 }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /mahasiswa/stats:
+    get:
+      tags: [Mahasiswa]
+      summary: Statistik jumlah mahasiswa per jurusan & angkatan (ADMIN)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+  /mahasiswa/{nim}:
+    parameters:
+      - { name: nim, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Mahasiswa]
+      summary: Detail mahasiswa (ADMIN)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Mahasiswa]
+      summary: Ubah data mahasiswa (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MahasiswaInput' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Mahasiswa]
+      summary: Hapus mahasiswa (ADMIN) — ditolak bila sudah punya KRS/nilai
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ───────────────────────── Dosen ─────────────────────────
+  /dosen:
+    get:
+      tags: [Dosen]
+      summary: Daftar dosen (ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Dosen]
+      summary: Tambah dosen beserta akun login (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/DosenInput'
+                - type: object
+                  required: [nidn, username, password]
+                  properties:
+                    nidn: { type: string, pattern: '^[0-9]{8,20}$' }
+                    username: { type: string, pattern: '^[a-zA-Z0-9_]{3,50}$' }
+                    password: { type: string, format: password, minLength: 8 }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /dosen/{nidn}:
+    parameters:
+      - { name: nidn, in: path, required: true, schema: { type: string, pattern: '^[0-9]{8,20}$' } }
+    get:
+      tags: [Dosen]
+      summary: Detail dosen (ADMIN)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Dosen]
+      summary: Ubah data dosen (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DosenInput' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Dosen]
+      summary: Hapus dosen (ADMIN) — ditolak bila masih mengajar
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ───────────────────────── Mata Kuliah ─────────────────────────
+  /matakuliah:
+    get:
+      tags: [Mata Kuliah]
+      summary: Daftar mata kuliah (semua peran)
+      parameters:
+        - $ref: '#/components/parameters/Search'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Matakuliah' }
+    post:
+      tags: [Mata Kuliah]
+      summary: Tambah mata kuliah (ADMIN) — prasyarat melingkar ditolak
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [kodeMk]
+                  properties:
+                    kodeMk: { type: string, pattern: '^[A-Za-z0-9]{2,10}$', example: IF105 }
+                - $ref: '#/components/schemas/MatakuliahInput'
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /matakuliah/{kodeMk}:
+    parameters:
+      - { name: kodeMk, in: path, required: true, schema: { type: string, pattern: '^[A-Za-z0-9]{2,10}$' } }
+    get:
+      tags: [Mata Kuliah]
+      summary: Detail mata kuliah
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Mata Kuliah]
+      summary: Ubah mata kuliah (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatakuliahInput' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+    delete:
+      tags: [Mata Kuliah]
+      summary: Hapus mata kuliah (ADMIN) — ditolak bila sudah dijadwalkan/dinilai
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ───────────────────────── Jadwal ─────────────────────────
+  /jadwal:
+    get:
+      tags: [Jadwal]
+      summary: Daftar jadwal kuliah (semua peran)
+      parameters:
+        - { name: semester, in: query, schema: { type: string, enum: [Ganjil, Genap] } }
+        - { name: tahunAjaran, in: query, schema: { type: string, example: 2025/2026 } }
+        - { name: nidn, in: query, schema: { type: string } }
+        - { name: kodeMk, in: query, schema: { type: string } }
+        - { name: hari, in: query, schema: { $ref: '#/components/schemas/Hari' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Jadwal' }
+    post:
+      tags: [Jadwal]
+      summary: Tambah jadwal (ADMIN) — ditolak bila ruangan/dosen bentrok
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JadwalInput' }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /jadwal/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Jadwal]
+      summary: Detail jadwal
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Jadwal]
+      summary: Ubah jadwal (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JadwalInput' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Jadwal]
+      summary: Hapus jadwal (ADMIN) — ditolak bila sudah diambil di KRS
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ───────────────────────── KRS ─────────────────────────
+  /krs:
+    get:
+      tags: [KRS]
+      summary: KRS periode aktif (MAHASISWA miliknya; ADMIN dengan ?nim=)
+      parameters:
+        - $ref: '#/components/parameters/NimAdmin'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+    post:
+      tags: [KRS]
+      summary: Ambil kelas (MAHASISWA)
+      description: |
+        Ditolak bila: periode tidak aktif, kelas penuh, mata kuliah sudah diambil, jadwal bentrok,
+        melebihi batas SKS, prasyarat belum lulus, atau ada UKT belum lunas yang melewati tenggat
+        (`UKT_BELUM_LUNAS`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [jadwalId]
+              properties:
+                jadwalId: { type: string, format: uuid }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /krs/penawaran:
+    get:
+      tags: [KRS]
+      summary: Kelas yang ditawarkan periode aktif beserta status prasyarat (MAHASISWA)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+  /krs/{id}:
+    delete:
+      tags: [KRS]
+      summary: Batalkan kelas di KRS (MAHASISWA) — ditolak bila sudah dinilai
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ───────────────────────── Nilai ─────────────────────────
+  /nilai/kelas/{jadwalId}:
+    parameters:
+      - $ref: '#/components/parameters/JadwalId'
+    get:
+      tags: [Nilai]
+      summary: Peserta dan nilai satu kelas (DOSEN pengampu / ADMIN)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Nilai]
+      summary: Simpan nilai kelas (DOSEN pengampu / ADMIN)
+      description: Nilai akhir = 30% tugas + 30% UTS + 40% UAS; huruf dihitung server. Mengirim notifikasi ke mahasiswa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nilai]
+              properties:
+                nilai:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    required: [nim]
+                    properties:
+                      nim: { type: string }
+                      tugas: { type: number, minimum: 0, maximum: 100, nullable: true }
+                      uts: { type: number, minimum: 0, maximum: 100, nullable: true }
+                      uas: { type: number, minimum: 0, maximum: 100, nullable: true }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /nilai/khs:
+    get:
+      tags: [Nilai]
+      summary: KHS satu periode (MAHASISWA miliknya; ADMIN dengan ?nim=)
+      parameters:
+        - $ref: '#/components/parameters/NimAdmin'
+        - { name: semester, in: query, schema: { type: string, enum: [Ganjil, Genap] } }
+        - { name: tahunAjaran, in: query, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+  /nilai/transkrip:
+    get:
+      tags: [Nilai]
+      summary: Transkrip — nilai terbaik per mata kuliah dan IPK
+      parameters:
+        - $ref: '#/components/parameters/NimAdmin'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+
+  # ───────────────────────── Absensi ─────────────────────────
+  /absensi/saya:
+    get:
+      tags: [Absensi]
+      summary: Rekap kehadiran per mata kuliah (MAHASISWA miliknya; ADMIN dengan ?nim=)
+      parameters:
+        - $ref: '#/components/parameters/NimAdmin'
+        - { name: semester, in: query, schema: { type: string } }
+        - { name: tahunAjaran, in: query, schema: { type: string } }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+  /absensi/kelas/{jadwalId}:
+    get:
+      tags: [Absensi]
+      summary: Daftar pertemuan dan rekap kehadiran peserta (DOSEN pengampu / ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/JadwalId'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /absensi/kelas/{jadwalId}/pertemuan:
+    post:
+      tags: [Absensi]
+      summary: Buat pertemuan baru; nomor pertemuan otomatis (DOSEN pengampu / ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/JadwalId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tanggal]
+              properties:
+                tanggal: { type: string, format: date }
+                topik: { type: string, maxLength: 200 }
+                materi: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /absensi/pertemuan/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      tags: [Absensi]
+      summary: Lembar absensi satu pertemuan (DOSEN pengampu / ADMIN)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Absensi]
+      summary: Simpan status kehadiran (DOSEN pengampu / ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [absensi]
+              properties:
+                absensi:
+                  type: array
+                  minItems: 1
+                  maxItems: 500
+                  items:
+                    type: object
+                    required: [nim, statusHadir]
+                    properties:
+                      nim: { type: string }
+                      statusHadir: { type: string, enum: [HADIR, IZIN, SAKIT, ALPA] }
+                      keterangan: { type: string, maxLength: 500, nullable: true }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+    delete:
+      tags: [Absensi]
+      summary: Hapus pertemuan beserta absensinya (DOSEN pengampu / ADMIN)
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+
+  # ───────────────────────── Tagihan ─────────────────────────
+  /tagihan:
+    post:
+      tags: [Tagihan]
+      summary: Terbitkan tagihan (ADMIN) — mengirim notifikasi ke mahasiswa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nim, jenisTagihan, jumlah, tenggatWaktu]
+              properties:
+                nim: { type: string }
+                jenisTagihan: { type: string, enum: [UKT, SPP] }
+                jumlah: { type: number, minimum: 1 }
+                tenggatWaktu: { type: string, format: date }
+                keterangan: { type: string, maxLength: 500 }
+      responses:
+        '201':
+          description: Dibuat
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TagihanResponse' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /tagihan/me:
+    get:
+      tags: [Tagihan]
+      summary: Tagihan milik mahasiswa (ADMIN dengan ?nim=)
+      parameters:
+        - $ref: '#/components/parameters/NimAdmin'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+  /tagihan/all:
+    get:
+      tags: [Tagihan]
+      summary: Semua tagihan (ADMIN)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [PENDING, SUCCESS, FAILED, EXPIRED] } }
+        - { name: nim, in: query, schema: { type: string } }
+        - { name: menungguVerifikasi, in: query, schema: { type: boolean }, description: Hanya yang punya konfirmasi pembayaran menunggu verifikasi }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /tagihan/{id}:
+    delete:
+      tags: [Tagihan]
+      summary: Hapus tagihan yang belum lunas (ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /tagihan/{id}/konfirmasi:
+    post:
+      tags: [Tagihan]
+      summary: Konfirmasi pembayaran manual (MAHASISWA pemilik tagihan)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metodePembayaran, nomorReferensi]
+              properties:
+                metodePembayaran: { type: string, minLength: 2, maxLength: 50, example: Transfer BNI }
+                nomorReferensi: { type: string, minLength: 3, maxLength: 100 }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /tagihan/{id}/verifikasi:
+    put:
+      tags: [Tagihan]
+      summary: Terima/tolak konfirmasi pembayaran (ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [diterima]
+              properties:
+                diterima: { type: boolean }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+
+  # ───────────────────────── Pembayaran ─────────────────────────
+  /payment/token:
+    post:
+      tags: [Pembayaran]
+      summary: Buat token Midtrans Snap untuk tagihan (MAHASISWA pemilik / ADMIN)
+      description: Membutuhkan `MIDTRANS_SERVER_KEY` yang valid di server.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tagihanId]
+              properties:
+                tagihanId: { type: string, format: uuid }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payment/webhook:
+    post:
+      tags: [Pembayaran]
+      summary: Notifikasi status transaksi dari Midtrans
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+
+  # ───────────────────────── Perpustakaan ─────────────────────────
+  /perpustakaan/buku:
+    get:
+      tags: [Perpustakaan]
+      summary: Katalog buku (semua peran)
+      parameters:
+        - $ref: '#/components/parameters/Search'
+        - { name: kategori, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items: { $ref: '#/components/schemas/Buku' }
+                          kategori:
+                            type: array
+                            items: { type: string }
+                          pagination: { $ref: '#/components/schemas/Pagination' }
+    post:
+      tags: [Perpustakaan]
+      summary: Tambah buku (ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [kodeBuku]
+                  properties:
+                    kodeBuku: { type: string, pattern: '^[A-Za-z0-9-]{2,20}$' }
+                - $ref: '#/components/schemas/BukuInput'
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /perpustakaan/buku/{kodeBuku}:
+    parameters:
+      - { name: kodeBuku, in: path, required: true, schema: { type: string } }
+    put:
+      tags: [Perpustakaan]
+      summary: Ubah buku (ADMIN) — jumlah tidak boleh kurang dari yang sedang dipinjam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BukuInput' }
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+    delete:
+      tags: [Perpustakaan]
+      summary: Hapus buku (ADMIN) — ditolak bila masih dipinjam
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /perpustakaan/peminjaman:
+    get:
+      tags: [Perpustakaan]
+      summary: Riwayat peminjaman (MAHASISWA miliknya; ADMIN semua / ?nim=)
+      parameters:
+        - { name: aktif, in: query, schema: { type: boolean }, description: Hanya yang belum dikembalikan }
+        - { name: nim, in: query, schema: { type: string }, description: Filter untuk ADMIN }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: '#/components/schemas/Peminjaman' }
+    post:
+      tags: [Perpustakaan]
+      summary: Catat peminjaman (ADMIN)
+      description: Ditolak bila stok habis, sudah meminjam judul yang sama, melebihi batas pinjam, atau ada pinjaman terlambat.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nim, kodeBuku]
+              properties:
+                nim: { type: string }
+                kodeBuku: { type: string }
+      responses:
+        '201': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /perpustakaan/peminjaman/{id}/kembali:
+    put:
+      tags: [Perpustakaan]
+      summary: Catat pengembalian dan hitung denda (ADMIN)
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '400': { $ref: '#/components/responses/Invalid' }
+
+  # ───────────────────────── Notifikasi & Audit ─────────────────────────
+  /notifikasi:
+    get:
+      tags: [Notifikasi]
+      summary: Notifikasi milik pengguna
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items: { $ref: '#/components/schemas/Notifikasi' }
+                          unread: { type: integer }
+                          pagination: { $ref: '#/components/schemas/Pagination' }
+  /notifikasi/{id}/baca:
+    put:
+      tags: [Notifikasi]
+      summary: Tandai satu notifikasi sudah dibaca
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifikasi/baca-semua:
+    put:
+      tags: [Notifikasi]
+      summary: Tandai semua notifikasi sudah dibaca
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+  /audit-log:
+    get:
+      tags: [Notifikasi]
+      summary: Riwayat perubahan data (ADMIN)
+      parameters:
+        - { name: tabel, in: query, schema: { type: string }, description: 'Modul, mis. tagihan' }
+        - { name: username, in: query, schema: { type: string } }
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200': { $ref: '#/components/responses/Ok' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    JadwalId:
+      name: jadwalId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    NimAdmin:
+      name: nim
+      in: query
+      description: Wajib untuk ADMIN; diabaikan untuk MAHASISWA (selalu data miliknya sendiri)
+      schema: { type: string }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Search:
+      name: search
+      in: query
+      schema: { type: string }
+
+  responses:
+    Ok:
+      description: Berhasil
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Envelope' }
+    Invalid:
+      description: Validasi gagal atau aturan bisnis dilanggar
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { success: false, message: Validation failed, error: VALIDATION_ERROR, data: { errors: [jadwalId tidak valid] } }
+    Unauthorized:
+      description: Token tidak ada, tidak valid, atau kedaluwarsa
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Forbidden:
+      description: Peran tidak diizinkan atau bukan pemilik data
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Data tidak ditemukan
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Data sudah ada, bentrok, atau masih dipakai
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+
+  schemas:
+    Envelope:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: OK }
+        data: {}
+    Error:
+      type: object
+      required: [success, message]
+      properties:
+        success: { type: boolean, example: false }
+        error: { type: string, description: Kode error mesin, example: NOT_FOUND }
+        message: { type: string, example: Data tidak ditemukan }
+        data:
+          type: object
+          properties:
+            errors:
+              type: array
+              items: { type: string }
+    Pagination:
+      type: object
+      properties:
+        page: { type: integer }
+        limit: { type: integer }
+        total: { type: integer }
+        totalPages: { type: integer }
+    Role:
+      type: string
+      enum: [ADMIN, DOSEN, MAHASISWA]
+    Hari:
+      type: string
+      enum: [SENIN, SELASA, RABU, KAMIS, JUMAT, SABTU, MINGGU]
+    Periode:
+      type: object
+      properties:
+        semester: { type: string, enum: [Ganjil, Genap] }
+        tahunAjaran: { type: string, example: 2025/2026 }
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    UserResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/User' }
+    Mahasiswa:
+      type: object
+      properties:
+        nim: { type: string }
+        userId: { type: string, format: uuid }
+        namaMhs: { type: string }
+        jurusan: { type: string }
+        angkatan: { type: string }
+        noHp: { type: string, nullable: true }
+        alamat: { type: string, nullable: true }
+    MahasiswaInput:
+      type: object
+      required: [namaMhs, jurusan, angkatan]
+      properties:
+        namaMhs: { type: string, minLength: 3, maxLength: 100 }
+        jurusan: { type: string, minLength: 3, maxLength: 50 }
+        angkatan: { type: string, pattern: '^[0-9]{4,10}$' }
+        noHp: { type: string, minLength: 10, maxLength: 15 }
+        alamat: { type: string, maxLength: 500 }
+    DosenInput:
+      type: object
+      required: [namaDosen, email]
+      properties:
+        namaDosen: { type: string, minLength: 3, maxLength: 100 }
+        email: { type: string, format: email }
+        gelarDepan: { type: string, maxLength: 20 }
+        gelarBelakang: { type: string, maxLength: 50 }
+        noHp: { type: string, pattern: '^[+]?[0-9]{10,15}$' }
+        departemen: { type: string, maxLength: 50 }
+    Matakuliah:
+      type: object
+      properties:
+        kodeMk: { type: string }
+        namaMk: { type: string }
+        sks: { type: integer }
+        semester: { type: string }
+        deskripsi: { type: string, nullable: true }
+        kodePrasyarat: { type: string, nullable: true }
+        jumlahJadwal: { type: integer }
+    MatakuliahInput:
+      type: object
+      required: [namaMk, sks, semester]
+      properties:
+        namaMk: { type: string, minLength: 3, maxLength: 100 }
+        sks: { type: integer, minimum: 1, maximum: 6 }
+        semester: { type: integer, minimum: 1, maximum: 14 }
+        deskripsi: { type: string, maxLength: 2000, nullable: true }
+        kodePrasyarat: { type: string, nullable: true }
+    Jadwal:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kodeMk: { type: string }
+        namaMk: { type: string }
+        sks: { type: integer }
+        nidn: { type: string }
+        namaDosen: { type: string }
+        hari: { $ref: '#/components/schemas/Hari' }
+        jamMulai: { type: string, example: '08:00' }
+        jamSelesai: { type: string, example: '10:30' }
+        ruangan: { type: string }
+        kelas: { type: string, nullable: true }
+        semester: { type: string }
+        tahunAjaran: { type: string }
+        kapasitas: { type: integer }
+        terisi: { type: integer, description: Jumlah peserta KRS aktif }
+    JadwalInput:
+      type: object
+      required: [kodeMk, nidn, hari, jamMulai, jamSelesai, ruangan, semester, tahunAjaran, kapasitas]
+      properties:
+        kodeMk: { type: string }
+        nidn: { type: string }
+        hari: { $ref: '#/components/schemas/Hari' }
+        jamMulai: { type: string, pattern: '^\d{2}:\d{2}$' }
+        jamSelesai: { type: string, pattern: '^\d{2}:\d{2}$' }
+        ruangan: { type: string, maxLength: 20 }
+        kelas: { type: string, maxLength: 20 }
+        semester: { type: string, enum: [Ganjil, Genap] }
+        tahunAjaran: { type: string, pattern: '^\d{4}/\d{4}$' }
+        kapasitas: { type: integer, minimum: 1, maximum: 500 }
+    Tagihan:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        nim: { type: string }
+        namaMhs: { type: string }
+        jenisTagihan: { type: string, enum: [UKT, SPP] }
+        jumlah: { type: number }
+        status: { type: string, enum: [PENDING, SUCCESS, FAILED, EXPIRED] }
+        tenggatWaktu: { type: string, format: date }
+        terlambat: { type: boolean }
+        menungguVerifikasi: { type: boolean }
+        keterangan: { type: string, nullable: true }
+    TagihanResponse:
+      allOf:
+        - $ref: '#/components/schemas/Envelope'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/Tagihan' }
+    Buku:
+      type: object
+      properties:
+        kodeBuku: { type: string }
+        judul: { type: string }
+        pengarang: { type: string }
+        penerbit: { type: string }
+        tahun: { type: integer }
+        isbn: { type: string, nullable: true }
+        kategori: { type: string }
+        jumlah: { type: integer }
+        tersedia: { type: integer }
+    BukuInput:
+      type: object
+      required: [judul, pengarang, penerbit, tahun, kategori, jumlah]
+      properties:
+        judul: { type: string, maxLength: 200 }
+        pengarang: { type: string, maxLength: 100 }
+        penerbit: { type: string, maxLength: 100 }
+        tahun: { type: integer, minimum: 1000 }
+        isbn: { type: string, maxLength: 20 }
+        kategori: { type: string, maxLength: 50 }
+        jumlah: { type: integer, minimum: 1, maximum: 1000 }
+    Peminjaman:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kodeBuku: { type: string }
+        judul: { type: string }
+        nim: { type: string }
+        namaMhs: { type: string }
+        tanggalPinjam: { type: string, format: date }
+        tenggat: { type: string, format: date }
+        tanggalKembali: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [AKTIF, TERLAMBAT, DIKEMBALIKAN] }
+        terlambatHari: { type: integer }
+        denda: { type: number, description: Berjalan s.d. hari ini bila belum dikembalikan }
+    Notifikasi:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        judul: { type: string }
+        pesan: { type: string }
+        tipe: { type: string, enum: [INFO, SUCCESS, WARNING, ERROR] }
+        isRead: { type: boolean }
+        createdAt: { type: string, format: date-time }

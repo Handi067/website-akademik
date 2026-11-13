@@ -69,7 +69,10 @@ const config: Config = {
   },
   bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
   sessionSecret: process.env.SESSION_SECRET || 'fallback-session-secret-change-in-production',
-  swaggerEnabled: process.env.SWAGGER_ENABLED?.trim() === 'true',
+  // Default aktif kecuali di production; set SWAGGER_ENABLED=true/false untuk memaksa.
+  swaggerEnabled: process.env.SWAGGER_ENABLED
+    ? process.env.SWAGGER_ENABLED.trim() === 'true'
+    : (process.env.NODE_ENV || 'development') !== 'production',
   healthCheckInterval: parseInt(process.env.HEALTH_CHECK_INTERVAL || '30000', 10),
   periodeAktif: {
     semester: process.env.SEMESTER_AKTIF || 'Ganjil',

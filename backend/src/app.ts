@@ -11,7 +11,9 @@ import { connectDatabase } from '@/config/database';
 // Import routes
 import apiRoutes from '@/routes/index';
 import swaggerUi from 'swagger-ui-express';
-import swaggerJsdoc from 'swagger-jsdoc';
+import fs from 'fs';
+import path from 'path';
+import YAML from 'yaml';
 
 // Create Express app
 const app = express();
@@ -67,37 +69,18 @@ app.get('/health', (req, res) => {
 app.use('/api', apiRoutes);
 
 // API documentation (if enabled)
+// Dokumentasi API: satu sumber kebenaran di postman/specs (juga dipakai Postman)
 if (config.swaggerEnabled) {
-  const swaggerOptions = {
-    definition: {
-      openapi: '3.0.0',
-      info: {
-        title: 'Academic Information System API',
-        version: '1.0.0',
-        description: 'API documentation for Academic Information System',
-      },
-      servers: [
-        {
-          url: `http://localhost:${config.port}/api`,
-          description: 'Development server',
-        },
-      ],
-      components: {
-        securitySchemes: {
-          bearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
-          },
-        },
-      },
-    },
-    apis: ['./src/routes/*.ts', './src/controllers/*.ts'],
-  };
-
-  const specs = swaggerJsdoc(swaggerOptions);
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
-  logger.info('Swagger documentation available at /api-docs');
+  const specPath =
+    process.env.OPENAPI_SPEC_PATH || path.resolve(__dirname, '../../postman/specs/website-akademik-api.yaml');
+  try {
+    const spec = YAML.parse(fs.readFileSync(specPath, 'utf8'));
+    app.get('/api-docs.json', (_req, res) => res.json(spec));
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(spec, { customSiteTitle: 'Website Akademik API' }));
+    logger.info('Swagger documentation available at /api-docs');
+  } catch (error) {
+    logger.warn(`OpenAPI spec tidak dapat dimuat dari ${specPath}; /api-docs dinonaktifkan`, error);
+  }
 }
 
 // 404 handler

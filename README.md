@@ -189,8 +189,14 @@ npm run prisma:studio       # Open database GUI
 ## 📚 API Documentation
 
 Once the backend is running, visit:
-- **API Documentation**: http://localhost:3001/api-docs
+- **API Documentation (Swagger UI)**: http://localhost:3001/api-docs
+- **OpenAPI JSON**: http://localhost:3001/api-docs.json
 - **Health Check**: http://localhost:3001/health
+
+Spesifikasi OpenAPI ada di `postman/specs/website-akademik-api.yaml` dan menjadi satu-satunya
+sumber dokumentasi (dipakai Swagger UI dan Postman). Saat menambah atau mengubah endpoint,
+perbarui file tersebut lalu jalankan `postman spec lint postman/specs/website-akademik-api.yaml`.
+Swagger UI aktif secara default kecuali di production (atur dengan `SWAGGER_ENABLED`).
 
 ### API Endpoints
 
