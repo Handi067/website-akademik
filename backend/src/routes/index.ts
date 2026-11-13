@@ -14,9 +14,13 @@ import tagihanRoutes from './tagihan.routes';
 import paymentRoutes from './payment.routes';
 import absensiRoutes from './absensi.routes';
 import perpustakaanRoutes from './perpustakaan.routes';
+import notifikasiRoutes, { auditRouter } from './notifikasi.routes';
+import { auditLog } from '@/middleware/audit.middleware';
 
 const router = Router();
 const dashboard = new DashboardService();
+
+router.use(auditLog);
 
 // API version
 router.get('/', (req, res) => {
@@ -40,6 +44,8 @@ router.use('/tagihan', tagihanRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/absensi', absensiRoutes);
 router.use('/perpustakaan', perpustakaanRoutes);
+router.use('/notifikasi', notifikasiRoutes);
+router.use('/audit-log', auditRouter);
 
 router.get('/periode', authenticate, (req, res) => {
   res.json(ok({ ...config.periodeAktif, maxSks: config.maxSks }));

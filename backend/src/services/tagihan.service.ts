@@ -3,6 +3,9 @@ import { prisma } from '@/config/database';
 import { ApiResponse } from '@/types/academic.types';
 import { fail, ok } from '@/utils/http';
 import { todayDate } from '@/utils/time';
+import { notify } from '@/services/notifikasi.service';
+
+const rupiah = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
 
 export interface TagihanInput {
   nim: string;
@@ -115,6 +118,11 @@ export class TagihanService {
       },
       select: tagihanSelect,
     });
+    await notify.mahasiswa([input.nim], {
+      judul: `Tagihan ${input.jenisTagihan} baru`,
+      pesan: `Tagihan ${input.jenisTagihan} sebesar ${rupiah(input.jumlah)} terbit, jatuh tempo ${input.tenggatWaktu}.`,
+      tipe: 'WARNING',
+    });
     return ok(toTagihanDto(row), 'Tagihan dibuat');
   }
 
@@ -143,6 +151,10 @@ export class TagihanService {
         status: StatusPembayaran.PENDING,
       },
     });
+    await notify.admins({
+      judul: 'Konfirmasi pembayaran baru',
+      pesan: `${t.mahasiswa.namaMhs} (${nim}) mengonfirmasi pembayaran ${t.jenisTagihan} ${rupiah(Number(t.jumlah))} via ${input.metodePembayaran}.`,
+    });
     return this.get(id, 'Konfirmasi pembayaran terkirim, menunggu verifikasi admin');
   }
 
@@ -160,6 +172,9 @@ export class TagihanService {
       }),
       ...(diterima ? [prisma.tagihan.update({ where: { id }, data: { status: StatusPembayaran.SUCCESS } })] : []),
     ]);
+    await notify.mahasiswa([t.nim], diterima
+      ? { judul: 'Pembayaran diterima', pesan: `Pembayaran ${t.jenisTagihan} ${rupiah(Number(t.jumlah))} telah diverifikasi. Tagihan lunas.`, tipe: 'SUCCESS' }
+      : { judul: 'Konfirmasi pembayaran ditolak', pesan: `Konfirmasi pembayaran ${t.jenisTagihan} ${rupiah(Number(t.jumlah))} ditolak admin. Periksa kembali bukti transfer Anda.`, tipe: 'ERROR' });
     return this.get(id, diterima ? 'Pembayaran diverifikasi, tagihan lunas' : 'Konfirmasi pembayaran ditolak');
   }
 

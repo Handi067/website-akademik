@@ -5,6 +5,7 @@ import { fail, ok } from '@/utils/http';
 import { GRADE_BOBOT, GRADE_LABEL, hitungIp, hitungNilaiAkhir, toGrade, toNumber } from '@/utils/grading';
 import { nidnOf } from '@/utils/actor';
 import { jadwalSelect, toJadwalDto } from '@/services/jadwal.service';
+import { notify } from '@/services/notifikasi.service';
 
 export interface NilaiInput {
   nim: string;
@@ -94,6 +95,10 @@ export class NilaiService {
         });
       })
     );
+    await notify.mahasiswa(items.map((i) => i.nim), {
+      judul: 'Nilai diperbarui',
+      pesan: `Nilai ${jadwal.namaMk} (${jadwal.semester} ${jadwal.tahunAjaran}) telah diinput dosen. Cek KHS Anda.`,
+    });
     const result = await this.getKelas(jadwalId, actor);
     return { ...result, message: `Nilai ${items.length} mahasiswa disimpan` };
   }

@@ -253,3 +253,24 @@ export interface Peminjaman {
   terlambatHari: number;
   denda: number;
 }
+
+export interface Notifikasi {
+  id: string;
+  judul: string;
+  pesan: string;
+  tipe: 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface AuditLog {
+  id: string;
+  aksi: string;
+  tabel: string;
+  recordId: string | null;
+  dataBaru: unknown;
+  ipAddress: string | null;
+  createdAt: string;
+  username: string | null;
+  role: Role | null;
+}

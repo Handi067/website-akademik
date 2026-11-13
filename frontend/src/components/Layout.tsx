@@ -17,11 +17,13 @@ import {
   UserCheck,
   Wallet,
   Library,
+  ShieldCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/auth/AuthContext';
 import type { Role } from '@/lib/types';
 import { Spinner } from './ui';
+import NotifikasiBell from './NotifikasiBell';
 
 interface NavItem {
   to: string;
@@ -43,6 +45,7 @@ export const NAV: NavItem[] = [
   { to: '/app/matakuliah', label: 'Mata Kuliah', icon: BookOpen, roles: ['ADMIN'] },
   { to: '/app/mahasiswa', label: 'Mahasiswa', icon: Users, roles: ['ADMIN'] },
   { to: '/app/dosen', label: 'Dosen', icon: UserCog, roles: ['ADMIN'] },
+  { to: '/app/audit-log', label: 'Audit Log', icon: ShieldCheck, roles: ['ADMIN'] },
 ];
 
 const ROLE_LABEL: Record<Role, string> = { ADMIN: 'Administrator', DOSEN: 'Dosen', MAHASISWA: 'Mahasiswa' };
@@ -101,6 +104,7 @@ export default function Layout() {
           <p className="text-sm font-medium text-white truncate">{user.username}</p>
           <p className="text-xs text-slate-500">{ROLE_LABEL[user.role]}</p>
         </div>
+        <NotifikasiBell onNavigate={() => setOpen(false)} />
         <button onClick={logout} className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10" title="Keluar" aria-label="Keluar">
           <LogOut className="h-5 w-5" />
         </button>
@@ -118,9 +122,12 @@ export default function Layout() {
           <GraduationCap className="h-6 w-6" />
           <span className="font-bold text-white">SIAKAD</span>
         </div>
-        <button onClick={() => setOpen(true)} className="p-2 text-slate-300" aria-label="Buka menu">
-          <Menu className="h-6 w-6" />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotifikasiBell />
+          <button onClick={() => setOpen(true)} className="p-2 text-slate-300" aria-label="Buka menu">
+            <Menu className="h-6 w-6" />
+          </button>
+        </div>
       </header>
       {open && (
         <div className="lg:hidden fixed inset-0 z-40 no-print">
