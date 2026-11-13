@@ -12,6 +12,7 @@ import krsRoutes from './krs.routes';
 import nilaiRoutes from './nilai.routes';
 import tagihanRoutes from './tagihan.routes';
 import paymentRoutes from './payment.routes';
+import absensiRoutes from './absensi.routes';
 
 const router = Router();
 const dashboard = new DashboardService();
@@ -36,6 +37,7 @@ router.use('/krs', krsRoutes);
 router.use('/nilai', nilaiRoutes);
 router.use('/tagihan', tagihanRoutes);
 router.use('/payment', paymentRoutes);
+router.use('/absensi', absensiRoutes);
 
 router.get('/periode', authenticate, (req, res) => {
   res.json(ok({ ...config.periodeAktif, maxSks: config.maxSks }));

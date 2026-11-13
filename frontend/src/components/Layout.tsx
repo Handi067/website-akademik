@@ -14,6 +14,7 @@ import {
   UserCog,
   Users,
   X,
+  UserCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/auth/AuthContext';
@@ -33,6 +34,7 @@ export const NAV: NavItem[] = [
   { to: '/app/khs', label: 'KHS', icon: FileText, roles: ['MAHASISWA'] },
   { to: '/app/transkrip', label: 'Transkrip', icon: ScrollText, roles: ['MAHASISWA'] },
   { to: '/app/nilai', label: 'Input Nilai', icon: PenSquare, roles: ['DOSEN', 'ADMIN'] },
+  { to: '/app/absensi', label: 'Absensi', icon: UserCheck, roles: ['ADMIN', 'DOSEN', 'MAHASISWA'] },
   { to: '/app/jadwal', label: 'Jadwal Kuliah', icon: CalendarDays, roles: ['ADMIN', 'DOSEN', 'MAHASISWA'] },
   { to: '/app/matakuliah', label: 'Mata Kuliah', icon: BookOpen, roles: ['ADMIN'] },
   { to: '/app/mahasiswa', label: 'Mahasiswa', icon: Users, roles: ['ADMIN'] },

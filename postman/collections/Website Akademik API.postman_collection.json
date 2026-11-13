@@ -1815,6 +1815,491 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Absensi",
+      "item": [
+        {
+          "name": "Absensi kelas dosen lain ditolak",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/kelas/{{jadwal_IF103}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "kelas",
+                "{{jadwal_IF103}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mahasiswa tidak bisa membuat pertemuan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/kelas/{{jadwal_IF102}}/pertemuan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "kelas",
+                "{{jadwal_IF102}}",
+                "pertemuan"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tanggal\": \"2026-11-14\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buat pertemuan IF102",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/kelas/{{jadwal_IF102}}/pertemuan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "kelas",
+                "{{jadwal_IF102}}",
+                "pertemuan"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tanggal\": \"2026-11-14\",\n  \"topik\": \"Tes Postman\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pertemuan_id', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lembar absensi berisi peserta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/pertemuan/{{pertemuan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "pertemuan",
+                "{{pertemuan_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json().data.peserta;",
+                  "pm.test('ada peserta', () => pm.expect(p.length).to.be.above(0));",
+                  "pm.collectionVariables.set('absensi_nim', p[0].nim);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Status tidak valid ditolak",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/pertemuan/{{pertemuan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "pertemuan",
+                "{{pertemuan_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"absensi\": [\n    {\n      \"nim\": \"{{absensi_nim}}\",\n      \"statusHadir\": \"TELAT\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Absensi bukan peserta ditolak",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/pertemuan/{{pertemuan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "pertemuan",
+                "{{pertemuan_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"absensi\": [\n    {\n      \"nim\": \"0000000000\",\n      \"statusHadir\": \"HADIR\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400 BUKAN_PESERTA', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.eql('BUKAN_PESERTA'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Simpan absensi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/pertemuan/{{pertemuan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "pertemuan",
+                "{{pertemuan_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"absensi\": [\n    {\n      \"nim\": \"{{absensi_nim}}\",\n      \"statusHadir\": \"HADIR\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const row = pm.response.json().data.peserta.find(p => p.nim === pm.collectionVariables.get('absensi_nim'));",
+                  "pm.test('tersimpan HADIR', () => pm.expect(row.statusHadir).to.eql('HADIR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rekap kelas menghitung kehadiran",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/kelas/{{jadwal_IF102}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "kelas",
+                "{{jadwal_IF102}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "const row = pm.response.json().data.peserta.find(p => p.nim === pm.collectionVariables.get('absensi_nim'));",
+                  "pm.test('HADIR >= 1', () => pm.expect(row.HADIR).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rekap kehadiran mahasiswa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/saya?semester=Ganjil&tahunAjaran=2025/2026",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "saya"
+              ],
+              "query": [
+                {
+                  "key": "semester",
+                  "value": "Ganjil"
+                },
+                {
+                  "key": "tahunAjaran",
+                  "value": "2025/2026"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('array', () => pm.expect(pm.response.json().data).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hapus pertemuan",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/absensi/pertemuan/{{pertemuan_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "absensi",
+                "pertemuan",
+                "{{pertemuan_id}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_dosen2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [

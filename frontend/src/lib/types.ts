@@ -164,3 +164,42 @@ export type Dashboard =
       totals: { ipk: number; sksLulus: number; sksSemesterIni: number; maxSks: number };
       jadwal: KrsItem[];
     };
+
+export type StatusHadir = 'HADIR' | 'IZIN' | 'SAKIT' | 'ALPA';
+
+export interface RekapHadir {
+  HADIR: number;
+  IZIN: number;
+  SAKIT: number;
+  ALPA: number;
+  persentase: number | null;
+}
+
+export interface PertemuanRow {
+  id: string;
+  pertemuanKe: number;
+  tanggal: string;
+  topik: string | null;
+  materi: string | null;
+  jumlahHadir: number;
+}
+
+export interface AbsensiKelas {
+  jadwal: Jadwal;
+  pertemuan: PertemuanRow[];
+  peserta: ({ nim: string; namaMhs: string } & RekapHadir)[];
+}
+
+export interface LembarAbsensi {
+  pertemuan: { id: string; kodeMk: string; namaMk: string; pertemuanKe: number; tanggal: string; topik: string | null };
+  peserta: { nim: string; namaMhs: string; statusHadir: StatusHadir | null; keterangan: string | null }[];
+}
+
+export interface RekapAbsensiMk extends RekapHadir {
+  jadwalId: string;
+  kodeMk: string;
+  namaMk: string;
+  namaDosen: string;
+  totalPertemuan: number;
+  detail: { pertemuanKe: number; tanggal: string; topik: string | null; statusHadir: StatusHadir | null; keterangan: string | null }[];
+}
