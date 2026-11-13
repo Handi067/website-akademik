@@ -2917,6 +2917,718 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Perpustakaan",
+      "item": [
+        {
+          "name": "Katalog bisa dicari mahasiswa",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku?search=algoritma",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "algoritma"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('hasil relevan', () => pm.expect(pm.response.json().data.items.every(b => /algoritma/i.test(b.judul + b.pengarang))).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mahasiswa tidak bisa menambah buku",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kodeBuku\": \"PM-TES\",\n  \"judul\": \"Buku Tes Postman\",\n  \"pengarang\": \"Penulis\",\n  \"penerbit\": \"Penerbit\",\n  \"tahun\": 2024,\n  \"kategori\": \"Tes\",\n  \"jumlah\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validasi buku",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kodeBuku\": \"x\",\n  \"judul\": \"\",\n  \"tahun\": 3000,\n  \"jumlah\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin menambah buku (1 eksemplar)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kodeBuku\": \"pm-tes\",\n  \"judul\": \"Buku Tes Postman\",\n  \"pengarang\": \"Penulis\",\n  \"penerbit\": \"Penerbit\",\n  \"tahun\": 2024,\n  \"kategori\": \"Tes\",\n  \"jumlah\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.test('kode dinormalisasi & stok penuh', () => { const d = pm.response.json().data; pm.expect(d.kodeBuku).to.eql('PM-TES'); pm.expect(d.tersedia).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kode buku ganda ditolak",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"kodeBuku\": \"PM-TES\",\n  \"judul\": \"Buku Tes Postman\",\n  \"pengarang\": \"Penulis\",\n  \"penerbit\": \"Penerbit\",\n  \"tahun\": 2024,\n  \"kategori\": \"Tes\",\n  \"jumlah\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pinjam oleh NIM tidak dikenal ditolak",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/peminjaman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "peminjaman"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nim\": \"0000000000\",\n  \"kodeBuku\": \"PM-TES\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catat peminjaman mahasiswa2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/peminjaman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "peminjaman"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nim\": \"2021001002\",\n  \"kodeBuku\": \"PM-TES\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('pinjam_id', pm.response.json().data.id);",
+                  "pm.test('tenggat 7 hari', () => { const d = pm.response.json().data; pm.expect((new Date(d.tenggat) - new Date(d.tanggalPinjam)) / 864e5).to.eql(7); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stok habis ditolak",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/peminjaman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "peminjaman"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nim\": \"2021001001\",\n  \"kodeBuku\": \"PM-TES\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('STOK_HABIS', () => pm.expect(pm.response.json().error).to.eql('STOK_HABIS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Jumlah < dipinjam ditolak",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku/PM-TES",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku",
+                "PM-TES"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"judul\": \"Ubah\",\n  \"pengarang\": \"Penulis\",\n  \"penerbit\": \"Penerbit\",\n  \"tahun\": 2024,\n  \"kategori\": \"Tes\",\n  \"jumlah\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('tersedia tetap 0', () => pm.expect(pm.response.json().data.tersedia).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hapus buku yang dipinjam ditolak",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku/PM-TES",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku",
+                "PM-TES"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mahasiswa melihat pinjamannya",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/peminjaman?aktif=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "peminjaman"
+              ],
+              "query": [
+                {
+                  "key": "aktif",
+                  "value": "true"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('hanya miliknya & memuat buku tes', () => { const d = pm.response.json().data; pm.expect(d.every(p => p.nim === '2021001002')).to.be.true; pm.expect(d.some(p => p.kodeBuku === 'PM-TES')).to.be.true; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mahasiswa tidak bisa mengembalikan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/peminjaman/{{pinjam_id}}/kembali",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "peminjaman",
+                "{{pinjam_id}}",
+                "kembali"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kembalikan buku",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/peminjaman/{{pinjam_id}}/kembali",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "peminjaman",
+                "{{pinjam_id}}",
+                "kembali"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('dikembalikan tanpa denda', () => { const d = pm.response.json().data; pm.expect(d.status).to.eql('DIKEMBALIKAN'); pm.expect(d.denda).to.eql(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kembalikan dua kali ditolak",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/peminjaman/{{pinjam_id}}/kembali",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "peminjaman",
+                "{{pinjam_id}}",
+                "kembali"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('SUDAH_KEMBALI', () => pm.expect(pm.response.json().error).to.eql('SUDAH_KEMBALI'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hapus buku tes",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perpustakaan/buku/PM-TES",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perpustakaan",
+                "buku",
+                "PM-TES"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [

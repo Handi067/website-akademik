@@ -13,6 +13,7 @@ import nilaiRoutes from './nilai.routes';
 import tagihanRoutes from './tagihan.routes';
 import paymentRoutes from './payment.routes';
 import absensiRoutes from './absensi.routes';
+import perpustakaanRoutes from './perpustakaan.routes';
 
 const router = Router();
 const dashboard = new DashboardService();
@@ -38,6 +39,7 @@ router.use('/nilai', nilaiRoutes);
 router.use('/tagihan', tagihanRoutes);
 router.use('/payment', paymentRoutes);
 router.use('/absensi', absensiRoutes);
+router.use('/perpustakaan', perpustakaanRoutes);
 
 router.get('/periode', authenticate, (req, res) => {
   res.json(ok({ ...config.periodeAktif, maxSks: config.maxSks }));

@@ -15,6 +15,7 @@ import TranskripPage from './pages/TranskripPage';
 import NilaiPage from './pages/NilaiPage';
 import AbsensiPage from './pages/AbsensiPage';
 import TagihanPage from './pages/TagihanPage';
+import PerpustakaanPage from './pages/PerpustakaanPage';
 import TagihanDemo from './pages/Dashboard';
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
             <Route path="nilai" element={<RequireAuth roles={['DOSEN', 'ADMIN']}><NilaiPage /></RequireAuth>} />
             <Route path="absensi" element={<AbsensiPage />} />
             <Route path="tagihan" element={<RequireAuth roles={['MAHASISWA', 'ADMIN']}><TagihanPage /></RequireAuth>} />
+            <Route path="perpustakaan" element={<PerpustakaanPage />} />
             <Route path="matakuliah" element={<RequireAuth roles={['ADMIN']}><MatakuliahPage /></RequireAuth>} />
             <Route path="mahasiswa" element={<RequireAuth roles={['ADMIN']}><MahasiswaPage /></RequireAuth>} />
             <Route path="dosen" element={<RequireAuth roles={['ADMIN']}><DosenPage /></RequireAuth>} />

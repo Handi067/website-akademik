@@ -2,6 +2,7 @@ import { JenisTagihan, Prisma, StatusPembayaran } from '@prisma/client';
 import { prisma } from '@/config/database';
 import { ApiResponse } from '@/types/academic.types';
 import { fail, ok } from '@/utils/http';
+import { todayDate } from '@/utils/time';
 
 export interface TagihanInput {
   nim: string;
@@ -42,7 +43,7 @@ const tagihanSelect = {
 type TagihanRow = Prisma.TagihanGetPayload<{ select: typeof tagihanSelect }>;
 
 const toDate = (d: Date) => d.toISOString().slice(0, 10);
-const startOfToday = () => new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
+const startOfToday = todayDate;
 
 export const toTagihanDto = (t: TagihanRow) => ({
   id: t.id,

@@ -226,3 +226,30 @@ export interface Tagihan {
     status: StatusPembayaran;
   }[];
 }
+
+export interface Buku {
+  kodeBuku: string;
+  judul: string;
+  pengarang: string;
+  penerbit: string;
+  tahun: number;
+  isbn: string | null;
+  kategori: string;
+  jumlah: number;
+  tersedia: number;
+}
+
+export interface Peminjaman {
+  id: string;
+  kodeBuku: string;
+  judul: string;
+  pengarang: string;
+  nim: string;
+  namaMhs: string;
+  tanggalPinjam: string;
+  tenggat: string;
+  tanggalKembali: string | null;
+  status: 'AKTIF' | 'TERLAMBAT' | 'DIKEMBALIKAN';
+  terlambatHari: number;
+  denda: number;
+}

@@ -38,6 +38,7 @@ interface Config {
     tahunAjaran: string;
   };
   maxSks: number;
+  perpustakaan: { lamaPinjamHari: number; dendaPerHari: number; maxPinjam: number };
 }
 
 const config: Config = {
@@ -75,6 +76,11 @@ const config: Config = {
     tahunAjaran: process.env.TAHUN_AJARAN_AKTIF || '2025/2026',
   },
   maxSks: parseInt(process.env.MAX_SKS || '24', 10),
+  perpustakaan: {
+    lamaPinjamHari: parseInt(process.env.PERPUS_LAMA_PINJAM_HARI || '7', 10),
+    dendaPerHari: parseInt(process.env.PERPUS_DENDA_PER_HARI || '1000', 10),
+    maxPinjam: parseInt(process.env.PERPUS_MAX_PINJAM || '3', 10),
+  },
 };
 
 // Validate required environment variables

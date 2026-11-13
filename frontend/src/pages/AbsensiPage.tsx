@@ -19,7 +19,7 @@ const STATUS_STYLE: Record<StatusHadir, string> = {
 const label = (s: StatusHadir) => s.charAt(0) + s.slice(1).toLowerCase();
 const persenText = (p: number | null) => (p === null ? '–' : `${p}%`);
 const persenColor = (p: number | null) => (p === null ? 'text-slate-500' : p >= 75 ? 'text-emerald-400' : 'text-rose-400');
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD zona lokal
 
 export default function AbsensiPage() {
   const { user } = useAuth();
