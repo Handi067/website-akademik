@@ -1,4 +1,6 @@
-import { Printer } from 'lucide-react';
+import { FileDown, Printer } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { exportTranskripPdf } from '@/lib/export';
 import { get } from '@/lib/api';
 import { useFetch } from '@/lib/useFetch';
 import { angka } from '@/lib/format';
@@ -15,9 +17,14 @@ export default function TranskripPage() {
         title="Transkrip Nilai"
         subtitle="Nilai terbaik untuk setiap mata kuliah yang pernah diambil"
         actions={
-          <button className="btn-ghost" onClick={() => window.print()} disabled={!data?.items.length}>
-            <Printer className="h-4 w-4" /> Cetak
-          </button>
+          <>
+            <button className="btn-ghost" onClick={() => data && exportTranskripPdf(data).catch(() => toast.error('Gagal membuat PDF'))} disabled={!data?.items.length}>
+              <FileDown className="h-4 w-4" /> PDF
+            </button>
+            <button className="btn-ghost" onClick={() => window.print()} disabled={!data?.items.length}>
+              <Printer className="h-4 w-4" /> Cetak
+            </button>
+          </>
         }
       />
       <DataState loading={loading} error={error} onRetry={reload} empty={!data?.items.length} emptyText="Belum ada nilai">

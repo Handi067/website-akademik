@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Printer } from 'lucide-react';
+import { FileDown, Printer } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { exportKhsPdf } from '@/lib/export';
 import { get } from '@/lib/api';
 import { useFetch } from '@/lib/useFetch';
 import { angka } from '@/lib/format';
@@ -37,6 +39,9 @@ export default function KhsPage() {
                 ))}
               </select>
             )}
+            <button className="btn-ghost" onClick={() => data && exportKhsPdf(data).catch(() => toast.error('Gagal membuat PDF'))} disabled={!data?.items.length}>
+              <FileDown className="h-4 w-4" /> PDF
+            </button>
             <button className="btn-ghost" onClick={() => window.print()} disabled={!data?.items.length}>
               <Printer className="h-4 w-4" /> Cetak
             </button>

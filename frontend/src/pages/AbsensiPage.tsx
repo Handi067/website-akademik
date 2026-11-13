@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, Plus, Save, Trash2 } from 'lucide-react';
+import { exportExcel } from '@/lib/export';
 import { useAuth } from '@/auth/AuthContext';
 import { del, errorMessage, get, post, put } from '@/lib/api';
 import { useFetch } from '@/lib/useFetch';
@@ -158,6 +159,35 @@ function AbsensiDosen() {
   );
 }
 
+/** Rekap absensi kelas: sheet ringkasan per mahasiswa + sheet daftar pertemuan. */
+const exportRekap = (d: AbsensiKelas) =>
+  exportExcel(`Absensi_${d.jadwal.kodeMk}_${d.jadwal.kelas ?? ''}_${d.jadwal.semester}_${d.jadwal.tahunAjaran}`, [
+    {
+      name: 'Rekap',
+      headers: ['No', 'NIM', 'Nama', 'Hadir', 'Izin', 'Sakit', 'Alpa', 'Kehadiran (%)'],
+      rows: d.peserta.map((p, i) => ({
+        No: i + 1,
+        NIM: p.nim,
+        Nama: p.namaMhs,
+        Hadir: p.HADIR,
+        Izin: p.IZIN,
+        Sakit: p.SAKIT,
+        Alpa: p.ALPA,
+        'Kehadiran (%)': p.persentase,
+      })),
+    },
+    {
+      name: 'Pertemuan',
+      headers: ['Pertemuan ke', 'Tanggal', 'Topik', 'Jumlah hadir'],
+      rows: d.pertemuan.map((p) => ({
+        'Pertemuan ke': p.pertemuanKe,
+        Tanggal: p.tanggal,
+        Topik: p.topik ?? '',
+        'Jumlah hadir': p.jumlahHadir,
+      })),
+    },
+  ]);
+
 function Kelas({ jadwalId, onOpen }: { jadwalId: string; onOpen: (pertemuanId: string) => void }) {
   const detail = useFetch(() => get<AbsensiKelas>(`/absensi/kelas/${jadwalId}`), [jadwalId]);
   const [form, setForm] = useState<{ tanggal: string; topik: string } | null>(null);
@@ -191,9 +221,14 @@ function Kelas({ jadwalId, onOpen }: { jadwalId: string; onOpen: (pertemuanId: s
                 {j.kodeMk} · {j.semester} {j.tahunAjaran} · {hariLabel(j.hari)} {j.jamMulai}–{j.jamSelesai} · {j.ruangan}
               </p>
             </div>
-            <button className="btn-solid" onClick={() => setForm({ tanggal: today(), topik: '' })}>
-              <Plus className="h-4 w-4" /> Pertemuan baru
-            </button>
+            <div className="flex gap-2">
+              <button className="btn-ghost" disabled={!detail.data!.peserta.length} onClick={() => exportRekap(detail.data!).catch(() => toast.error('Gagal membuat file Excel'))}>
+                <FileSpreadsheet className="h-4 w-4" /> Excel
+              </button>
+              <button className="btn-solid" onClick={() => setForm({ tanggal: today(), topik: '' })}>
+                <Plus className="h-4 w-4" /> Pertemuan baru
+              </button>
+            </div>
           </div>
 
           <h3 className="px-5 pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Pertemuan</h3>

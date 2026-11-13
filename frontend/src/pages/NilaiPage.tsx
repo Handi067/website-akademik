@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Save } from 'lucide-react';
+import { FileSpreadsheet, Save } from 'lucide-react';
+import { exportExcel } from '@/lib/export';
 import { useAuth } from '@/auth/AuthContext';
 import { errorMessage, get, put } from '@/lib/api';
 import { useFetch } from '@/lib/useFetch';
@@ -122,10 +123,36 @@ export default function NilaiPage() {
                         {j.kodeMk} · {j.semester} {j.tahunAjaran} · {hariLabel(j.hari)} {j.jamMulai}–{j.jamSelesai} · {j.ruangan}
                       </p>
                     </div>
+                    <div className="flex gap-2">
+                    <button
+                      className="btn-ghost"
+                      disabled={!detail.data!.peserta.length}
+                      onClick={() =>
+                        exportExcel(`Nilai_${j.kodeMk}_${j.kelas ?? ''}_${j.semester}_${j.tahunAjaran}`, [
+                          {
+                            name: 'Nilai',
+                            headers: ['No', 'NIM', 'Nama', 'Tugas', 'UTS', 'UAS', 'Nilai Akhir', 'Huruf'],
+                            rows: detail.data!.peserta.map((p, i) => ({
+                              No: i + 1,
+                              NIM: p.nim,
+                              Nama: p.namaMhs,
+                              Tugas: p.tugas,
+                              UTS: p.uts,
+                              UAS: p.uas,
+                              'Nilai Akhir': p.nilaiAkhir,
+                              Huruf: p.grade,
+                            })),
+                          },
+                        ]).catch(() => toast.error('Gagal membuat file Excel'))
+                      }
+                    >
+                      <FileSpreadsheet className="h-4 w-4" /> Excel
+                    </button>
                     <button className="btn-solid" onClick={save} disabled={saving || invalid || dirty.length === 0}>
                       {saving ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />}
                       Simpan{dirty.length ? ` (${dirty.length})` : ''}
                     </button>
+                    </div>
                   </div>
                   {invalid && <p className="px-5 pb-2 text-xs text-rose-400">Nilai harus angka 0–100 (maks. 2 desimal).</p>}
                   {detail.data!.peserta.length === 0 ? (
