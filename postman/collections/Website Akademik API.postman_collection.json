@@ -2300,6 +2300,623 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Tagihan & Pembayaran",
+      "item": [
+        {
+          "name": "Validasi tagihan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nim\": \"2021001002\",\n  \"jenisTagihan\": \"DENDA\",\n  \"jumlah\": 0,\n  \"tenggatWaktu\": \"31-12-2026\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tagihan NIM tidak dikenal ditolak",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nim\": \"0000000000\",\n  \"jenisTagihan\": \"UKT\",\n  \"jumlah\": 1000,\n  \"tenggatWaktu\": \"2026-12-31\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin membuat tagihan mahasiswa2",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nim\": \"2021001002\",\n  \"jenisTagihan\": \"SPP\",\n  \"jumlah\": 750000,\n  \"tenggatWaktu\": \"2099-12-31\",\n  \"keterangan\": \"Tes Postman\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('tagihan_mhs2', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Konfirmasi tagihan orang lain ditolak",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/{{tagihan_mhs1}}/konfirmasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "{{tagihan_mhs1}}",
+                "konfirmasi"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metodePembayaran\": \"Transfer BNI\",\n  \"nomorReferensi\": \"REF-001\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mahasiswa konfirmasi pembayaran",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/{{tagihan_mhs2}}/konfirmasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "{{tagihan_mhs2}}",
+                "konfirmasi"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metodePembayaran\": \"Transfer BNI\",\n  \"nomorReferensi\": \"REF-001\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('menunggu verifikasi', () => pm.expect(pm.response.json().data.menungguVerifikasi).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Konfirmasi ganda ditolak",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/{{tagihan_mhs2}}/konfirmasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "{{tagihan_mhs2}}",
+                "konfirmasi"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"metodePembayaran\": \"Transfer BNI\",\n  \"nomorReferensi\": \"REF-002\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mahasiswa tidak bisa verifikasi",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/{{tagihan_mhs2}}/verifikasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "{{tagihan_mhs2}}",
+                "verifikasi"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diterima\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin melihat antrean verifikasi",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/all?menungguVerifikasi=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "all"
+              ],
+              "query": [
+                {
+                  "key": "menungguVerifikasi",
+                  "value": "true"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('memuat tagihan mahasiswa2', () => pm.expect(pm.response.json().data.some(t => t.id === pm.collectionVariables.get('tagihan_mhs2'))).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin verifikasi → lunas",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/{{tagihan_mhs2}}/verifikasi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "{{tagihan_mhs2}}",
+                "verifikasi"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diterima\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));",
+                  "pm.test('SUCCESS', () => pm.expect(pm.response.json().data.status).to.eql('SUCCESS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hapus tagihan lunas ditolak",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/{{tagihan_mhs2}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "{{tagihan_mhs2}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin membuat UKT lewat tenggat",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nim\": \"2021001002\",\n  \"jenisTagihan\": \"UKT\",\n  \"jumlah\": 5000000,\n  \"tenggatWaktu\": \"2020-01-01\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('ukt_telat', pm.response.json().data.id);",
+                  "pm.test('terlambat', () => pm.expect(pm.response.json().data.terlambat).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "KRS diblokir saat UKT tertunggak",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/krs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "krs"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_mhs2}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jadwalId\": \"{{jadwal_IF101}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('400', () => pm.response.to.have.status(400));",
+                  "pm.test('UKT_BELUM_LUNAS', () => pm.expect(pm.response.json().error).to.eql('UKT_BELUM_LUNAS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hapus UKT tertunggak",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/tagihan/{{ukt_telat}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "tagihan",
+                "{{ukt_telat}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token_admin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ],
   "variable": [

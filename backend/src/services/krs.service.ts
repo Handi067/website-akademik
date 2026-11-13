@@ -5,6 +5,7 @@ import { ApiResponse } from '@/types/academic.types';
 import { fail, ok } from '@/utils/http';
 import { isLulus } from '@/utils/grading';
 import { jadwalSelect, sortJadwal, toJadwalDto } from '@/services/jadwal.service';
+import { uktTertunggak } from '@/services/tagihan.service';
 
 const periodeAktif = () => config.periodeAktif;
 
@@ -62,6 +63,14 @@ export class KrsService {
         const { semester, tahunAjaran } = periodeAktif();
         if (jadwal.semester !== semester || jadwal.tahunAjaran !== tahunAjaran) {
           return fail('PERIODE_TIDAK_AKTIF', `KRS hanya dapat diisi untuk periode ${semester} ${tahunAjaran}`);
+        }
+
+        const tunggakan = await uktTertunggak(nim, tx);
+        if (tunggakan) {
+          return fail(
+            'UKT_BELUM_LUNAS',
+            `KRS diblokir: UKT sebesar Rp${Number(tunggakan.jumlah).toLocaleString('id-ID')} belum lunas (tenggat ${tunggakan.tenggatWaktu.toISOString().slice(0, 10)})`
+          );
         }
 
         const target = toJadwalDto(jadwal);

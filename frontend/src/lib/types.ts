@@ -203,3 +203,26 @@ export interface RekapAbsensiMk extends RekapHadir {
   totalPertemuan: number;
   detail: { pertemuanKe: number; tanggal: string; topik: string | null; statusHadir: StatusHadir | null; keterangan: string | null }[];
 }
+
+export type StatusPembayaran = 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
+
+export interface Tagihan {
+  id: string;
+  nim: string;
+  namaMhs: string;
+  jurusan: string;
+  jenisTagihan: 'UKT' | 'SPP';
+  jumlah: number;
+  status: StatusPembayaran;
+  tenggatWaktu: string;
+  terlambat: boolean;
+  keterangan: string | null;
+  menungguVerifikasi: boolean;
+  pembayaran: {
+    id: string;
+    metodePembayaran: string | null;
+    nomorReferensi: string | null;
+    waktuTransaksi: string | null;
+    status: StatusPembayaran;
+  }[];
+}
