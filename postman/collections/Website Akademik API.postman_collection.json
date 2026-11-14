@@ -4084,7 +4084,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('200', () => pm.response.to.have.status(200));",
-                  "pm.test('password disamarkan', () => pm.expect(JSON.stringify(pm.response.json().data.items)).to.not.match(/mahasiswa123|password\":\"(?![REDACTED)/));"
+                  "const items = pm.response.json().data.items;",
+                  "const dibuat = items.find(a => a.aksi === 'CREATE /mahasiswa' && a.dataBaru && 'password' in a.dataBaru);",
+                  "pm.test('ada log pembuatan mahasiswa berisi field password', () => pm.expect(dibuat).to.exist);",
+                  "pm.test('password disamarkan', () => pm.expect(dibuat.dataBaru.password).to.eql('[REDACTED]'));",
+                  "pm.test('password asli tidak tersimpan di log mana pun', () => pm.expect(JSON.stringify(items)).to.not.include('mahasiswa123'));"
                 ]
               }
             }
