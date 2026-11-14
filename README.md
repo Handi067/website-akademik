@@ -128,7 +128,9 @@ website-akademik/
 - Backend berjalan di port **3001**; frontend (Vite, port 3000) mem-proxy `/api` ke sana.
 - Periode akademik aktif diatur lewat `SEMESTER_AKTIF` dan `TAHUN_AJARAN_AKTIF` di `backend/.env`.
 - Reset data ke kondisi awal: `cd backend && npx prisma migrate reset` (menjalankan seed otomatis).
-- Uji API: `postman collection run "postman/collections/Website Akademik API.postman_collection.json"`
+- Unit & contract test (tanpa database): `cd backend && npm test` (`npm run test:coverage` untuk cakupan).
+  Mencakup perhitungan nilai/IP, aturan KRS, aturan perpustakaan, serta sinkronisasi spec OpenAPI dengan route.
+- Uji API end-to-end: `cd backend && npm run test:api`, atau `postman collection run "postman/collections/Website Akademik API.postman_collection.json"`
   (jalankan setelah reset data, karena koleksi mengubah data).
 
 ### Default Login Credentials
