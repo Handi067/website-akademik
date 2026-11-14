@@ -18,7 +18,6 @@ import TagihanPage from './pages/TagihanPage';
 import PerpustakaanPage from './pages/PerpustakaanPage';
 import NotifikasiPage from './pages/NotifikasiPage';
 import AuditLogPage from './pages/AuditLogPage';
-import TagihanDemo from './pages/Dashboard';
 
 function App() {
   return (
@@ -27,8 +26,6 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
-          {/* Prototype pembayaran Midtrans (data tiruan) */}
-          <Route path="/tagihan-demo" element={<TagihanDemo />} />
           <Route
             path="/app"
             element={

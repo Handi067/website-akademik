@@ -80,7 +80,9 @@ website-akademik/
 │   │   └── utils/            # Utility functions
 │   └── public/               # Static assets
 ├── docker-compose.yml         # Docker configuration
-└── docs/                     # Documentation
+├── docs/                      # Dokumentasi arsitektur & desain
+├── postman/                   # Koleksi Postman & spesifikasi OpenAPI
+└── legacy/                    # Aplikasi lama Express + EJS (arsip)
 ```
 
 ## 🚀 Quick Start
@@ -123,7 +125,7 @@ website-akademik/
 
 ### Catatan pengembangan lokal
 
-- Backend memakai database **`db_akademik_v2`**, terpisah dari `db_akademik` milik aplikasi lama (`App.js` + EJS).
+- Backend memakai database **`db_akademik_v2`**, terpisah dari `db_akademik` milik aplikasi lama (Express + EJS, kini di `legacy/`).
   Seed menolak berjalan bila mendeteksi tabel aplikasi lama.
 - Backend berjalan di port **3001**; frontend (Vite, port 3000) mem-proxy `/api` ke sana.
 - Periode akademik aktif diatur lewat `SEMESTER_AKTIF` dan `TAHUN_AJARAN_AKTIF` di `backend/.env`.
@@ -155,7 +157,7 @@ The system uses a comprehensive database schema with the following main entities
 - **Notifikasi**: System notifications
 - **AuditLog**: Activity logging for security
 
-See `database-design.md` for complete ERD and schema details.
+See `docs/database-design.md` for complete ERD and schema details.
 
 ## 🔧 Development
 

@@ -8,3 +8,9 @@ dist/
 logs/
 *.log
 coverage/
+
+# Salinan repo lama di dalam proyek (bukan bagian dari repo ini)
+/website-akademik/
+
+# Secret Kubernetes asli — buat dari infrastructure/kubernetes/secrets-templates/
+infrastructure/kubernetes/secrets/
